@@ -102,11 +102,14 @@ document.addEventListener("keydown", e => {
 
 // add item
 async function addItem() {
-  const name = nameInput.value;
-  const date = dateInput.value;
-  const image = imageInput.value;
+  const name = document.getElementById("name").value;
+  const date = document.getElementById("date").value;
+  const image = document.getElementById("image").value;
 
-  if (!name) return;
+  if (!name) {
+    alert("Enter item name");
+    return;
+  }
 
   await fetch(SUPABASE_URL + "/rest/v1/items", {
     method: "POST",
@@ -120,9 +123,9 @@ async function addItem() {
 
   loadItems();
 
-  nameInput.value = "";
-  dateInput.value = "";
-  imageInput.value = "";
+  document.getElementById("name").value = "";
+  document.getElementById("date").value = "";
+  document.getElementById("image").value = "";
 }
 
 // toggle done
@@ -211,4 +214,3 @@ loadItems();
 
 </body>
 </html>
-
