@@ -10,71 +10,106 @@
 body {
   font-family: -apple-system, sans-serif;
   background: #f2f2f7;
-  padding: 20px;
+  padding: 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.container {
+  width: 100%;
+  max-width: 420px;
 }
 
 h1 {
   text-align: center;
   font-size: 28px;
+  margin-bottom: 10px;
 }
 
+/* inputs */
 input, button {
   width: 100%;
-  padding: 16px;
-  margin-top: 12px;
-  border-radius: 18px;
+  padding: 14px;
+  margin-top: 10px;
+  border-radius: 16px;
   border: none;
   font-size: 16px;
+  box-sizing: border-box;
 }
 
 input {
   background: white;
 }
 
+/* main add button */
 button {
   background: #34c759;
   color: white;
   font-weight: bold;
 }
 
+/* cards */
 .card {
   background: white;
-  padding: 16px;
-  margin-top: 14px;
-  border-radius: 20px;
-  font-size: 16px;
-  display: flex;
-  flex-direction: column;
+  padding: 14px;
+  margin-top: 12px;
+  border-radius: 18px;
+  font-size: 15px;
 }
 
+/* top row layout */
 .topRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
 }
 
-img {
-  width: 100%;
-  border-radius: 15px;
-  margin-top: 8px;
+/* left side */
+.leftSide {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
+/* checkbox */
+input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+}
+
+/* done style */
 .done {
   text-decoration: line-through;
   color: gray;
 }
 
-.smallBtn {
-  background: red;
-  padding: 8px;
-  border-radius: 10px;
-  color: white;
+/* image */
+img {
+  width: 100%;
+  border-radius: 14px;
+  margin-top: 10px;
+}
+
+/* delete icon */
+.deleteBtn {
+  background: transparent;
   border: none;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 6px;
+}
+
+/* spacing fix */
+span {
+  line-height: 1.4;
 }
 </style>
 </head>
 
 <body>
+
+<div class="container">
 
 <h1>Shopping Reminder</h1>
 
@@ -85,22 +120,26 @@ img {
 
 <div id="list"></div>
 
+</div>
+
 <script>
 const SUPABASE_URL = "https://akxoqcizqqqmwezocrvv.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFreG9xY2l6cXFxbXdlem9jcnZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5NzEyMDIsImV4cCI6MjA4OTU0NzIwMn0.Z6MlXYW47gSlIEYEomjLHUwEeXV7pfBYYq9b73HXzhs";
 
-// format date
 function formatDate(d) {
   if (!d) return "";
-  return new Date(d).toLocaleString();
+  return new Date(d).toLocaleString([], {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
 }
 
-// enter key
 document.addEventListener("keydown", e => {
   if (e.key === "Enter") addItem();
 });
 
-// add item
 async function addItem() {
   const name = document.getElementById("name").value;
   const date = document.getElementById("date").value;
@@ -128,7 +167,6 @@ async function addItem() {
   document.getElementById("image").value = "";
 }
 
-// toggle done
 async function toggleDone(id, current) {
   await fetch(SUPABASE_URL + "/rest/v1/items?id=eq." + id, {
     method: "PATCH",
@@ -143,7 +181,6 @@ async function toggleDone(id, current) {
   loadItems();
 }
 
-// delete item
 async function deleteItem(id) {
   await fetch(SUPABASE_URL + "/rest/v1/items?id=eq." + id, {
     method: "DELETE",
@@ -156,7 +193,6 @@ async function deleteItem(id) {
   loadItems();
 }
 
-// load items
 async function loadItems() {
   const res = await fetch(SUPABASE_URL + "/rest/v1/items?select=*", {
     headers: {
@@ -176,6 +212,7 @@ async function loadItems() {
     top.className = "topRow";
 
     const left = document.createElement("div");
+    left.className = "leftSide";
 
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
@@ -184,14 +221,15 @@ async function loadItems() {
 
     const text = document.createElement("span");
     text.innerHTML = `<b>${item.name}</b><br>${formatDate(item.date)}`;
+
     if (item.done) text.classList.add("done");
 
     left.appendChild(checkbox);
     left.appendChild(text);
 
     const delBtn = document.createElement("button");
-    delBtn.innerText = "Delete";
-    delBtn.className = "smallBtn";
+    delBtn.className = "deleteBtn";
+    delBtn.innerHTML = "🗑️";
     delBtn.onclick = () => deleteItem(item.id);
 
     top.appendChild(left);
