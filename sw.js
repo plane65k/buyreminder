@@ -1,11 +1,9 @@
 javascript
-self.addEventListener("push", function(event) {
+self.addEventListener("push", event => {
   const data = event.data.json();
 
-  event.waitUntil(
-    self.registration.showNotification("Shopping Reminder", {
-      body: data.body
-    })
-  );
+  self.registration.showNotification("Shopping Reminder", {
+    body: data.body
+  });
 });
 
