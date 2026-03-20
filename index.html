@@ -8,36 +8,68 @@
 
 <style>
 body {
-  font-family: Arial;
-  background: #f4f4f4;
+  font-family: -apple-system, sans-serif;
+  background: #f2f2f7;
   padding: 20px;
 }
 
 h1 {
   text-align: center;
+  font-size: 28px;
 }
 
 input, button {
-  padding: 10px;
-  margin: 5px;
-  border-radius: 10px;
-  border: 1px solid #ccc;
+  width: 100%;
+  padding: 16px;
+  margin-top: 12px;
+  border-radius: 18px;
+  border: none;
+  font-size: 16px;
+}
+
+input {
+  background: white;
 }
 
 button {
-  background: #4CAF50;
+  background: #34c759;
   color: white;
-  border: none;
+  font-weight: bold;
 }
 
 .card {
   background: white;
-  padding: 10px;
-  margin-top: 10px;
-  border-radius: 15px;
+  padding: 16px;
+  margin-top: 14px;
+  border-radius: 20px;
+  font-size: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.topRow {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+}
+
+img {
+  width: 100%;
+  border-radius: 15px;
+  margin-top: 8px;
+}
+
+.done {
+  text-decoration: line-through;
+  color: gray;
+}
+
+.smallBtn {
+  background: red;
+  padding: 8px;
+  border-radius: 10px;
+  color: white;
+  border: none;
 }
 </style>
 </head>
@@ -55,101 +87,73 @@ button {
 
 <script>
 const SUPABASE_URL = "https://akxoqcizqqqmwezocrvv.supabase.co";
-const SUPABASE_KEY = "YOUR_KEY_HERE";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFreG9xY2l6cXFxbXdlem9jcnZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5NzEyMDIsImV4cCI6MjA4OTU0NzIwMn0.Z6MlXYW47gSlIEYEomjLHUwEeXV7pfBYYq9b73HXzhs";
 
-// 🔔 notifications
-if ("Notification" in window) {
-  Notification.requestPermission();
+// format date
+function formatDate(d) {
+  if (!d) return "";
+  return new Date(d).toLocaleString();
 }
 
-// 📅 format date
-function formatDate(dateStr) {
-  if (!dateStr) return "";
-  return new Date(dateStr).toLocaleString();
-}
-
-// ⌨️ ENTER KEY SUPPORT
-document.addEventListener("keydown", function(e) {
-  if (e.key === "Enter") {
-    addItem();
-  }
+// enter key
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter") addItem();
 });
 
-// ➕ add item
+// add item
 async function addItem() {
-  const name = document.getElementById("name").value;
-  const date = document.getElementById("date").value;
-  const image = document.getElementById("image").value;
+  const name = nameInput.value;
+  const date = dateInput.value;
+  const image = imageInput.value;
 
   if (!name) return;
 
-  const item = { name, date, image };
+  await fetch(SUPABASE_URL + "/rest/v1/items", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "apikey": SUPABASE_KEY,
+      "Authorization": "Bearer " + SUPABASE_KEY
+    },
+    body: JSON.stringify({ name, date, image, done: false })
+  });
 
-  // 🔥 instant UI update
-  renderItem(item, true);
+  loadItems();
 
-  try {
-    await fetch(SUPABASE_URL + "/rest/v1/items", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "apikey": SUPABASE_KEY,
-        "Authorization": "Bearer " + SUPABASE_KEY
-      },
-      body: JSON.stringify(item)
-    });
-
-  } catch (e) {
-    alert("Error saving item");
-  }
-
-  scheduleNotification(name, date);
-
-  document.getElementById("name").value = "";
-  document.getElementById("date").value = "";
-  document.getElementById("image").value = "";
+  nameInput.value = "";
+  dateInput.value = "";
+  imageInput.value = "";
 }
 
-// 🔔 notification (open app)
-function scheduleNotification(name, date) {
-  if (!date) return;
+// toggle done
+async function toggleDone(id, current) {
+  await fetch(SUPABASE_URL + "/rest/v1/items?id=eq." + id, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      "apikey": SUPABASE_KEY,
+      "Authorization": "Bearer " + SUPABASE_KEY
+    },
+    body: JSON.stringify({ done: !current })
+  });
 
-  const delay = new Date(date).getTime() - Date.now();
-
-  if (delay > 0) {
-    setTimeout(() => {
-      if (Notification.permission === "granted") {
-        new Notification("Shopping Reminder", {
-          body: "Buy: " + name
-        });
-      }
-    }, delay);
-  }
+  loadItems();
 }
 
-// 🧱 render one item
-function renderItem(item, prepend=false) {
-  const list = document.getElementById("list");
+// delete item
+async function deleteItem(id) {
+  await fetch(SUPABASE_URL + "/rest/v1/items?id=eq." + id, {
+    method: "DELETE",
+    headers: {
+      "apikey": SUPABASE_KEY,
+      "Authorization": "Bearer " + SUPABASE_KEY
+    }
+  });
 
-  const div = document.createElement("div");
-  div.className = "card";
-
-  let html = `<b>${item.name}</b><br>${formatDate(item.date)}`;
-
-  if (item.image) {
-    html += `<br><img src="${item.image}" width="60">`;
-  }
-
-  div.innerHTML = html;
-
-  if (prepend) {
-    list.prepend(div);
-  } else {
-    list.appendChild(div);
-  }
+  loadItems();
 }
 
-// 📥 load items
+// load items
 async function loadItems() {
   const res = await fetch(SUPABASE_URL + "/rest/v1/items?select=*", {
     headers: {
@@ -159,11 +163,47 @@ async function loadItems() {
   });
 
   const data = await res.json();
-
-  const list = document.getElementById("list");
   list.innerHTML = "";
 
-  data.forEach(item => renderItem(item));
+  data.forEach(item => {
+    const div = document.createElement("div");
+    div.className = "card";
+
+    const top = document.createElement("div");
+    top.className = "topRow";
+
+    const left = document.createElement("div");
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = item.done || false;
+    checkbox.onclick = () => toggleDone(item.id, item.done);
+
+    const text = document.createElement("span");
+    text.innerHTML = `<b>${item.name}</b><br>${formatDate(item.date)}`;
+    if (item.done) text.classList.add("done");
+
+    left.appendChild(checkbox);
+    left.appendChild(text);
+
+    const delBtn = document.createElement("button");
+    delBtn.innerText = "Delete";
+    delBtn.className = "smallBtn";
+    delBtn.onclick = () => deleteItem(item.id);
+
+    top.appendChild(left);
+    top.appendChild(delBtn);
+
+    div.appendChild(top);
+
+    if (item.image) {
+      const img = document.createElement("img");
+      img.src = item.image;
+      div.appendChild(img);
+    }
+
+    list.appendChild(div);
+  });
 }
 
 loadItems();
@@ -171,3 +211,4 @@ loadItems();
 
 </body>
 </html>
+
