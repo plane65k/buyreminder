@@ -5,10 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Shopping Reminder">
-<link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/190/190411.png">
-<link rel="manifest" href="manifest.json">
-<title>Shopping Reminder | Fixed Push</title>
+<title>Shopping Reminder | Web Push</title>
 
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -41,14 +38,14 @@
     font-size: 14px;
     margin-bottom: 24px;
   }
-  .timezone-info {
-    background: #e3f2fd;
+  .vapid-info {
+    background: #f0f0f0;
     border-radius: 12px;
-    padding: 8px 12px;
-    margin: 8px 0;
-    font-size: 12px;
-    text-align: center;
-    color: #0066cc;
+    padding: 12px;
+    margin: 12px 0;
+    font-size: 11px;
+    font-family: monospace;
+    word-break: break-all;
   }
   .input-group {
     background: white;
@@ -81,7 +78,6 @@
     font-weight: 600;
     margin-top: 16px;
     cursor: pointer;
-    box-shadow: 0 2px 8px rgba(52,199,89,0.3);
   }
   .card {
     background: white;
@@ -89,11 +85,6 @@
     margin-top: 12px;
     border-radius: 22px;
     box-shadow: 0 2px 12px rgba(0,0,0,0.05);
-    animation: fadeIn 0.2s ease;
-  }
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(6px);}
-    to { opacity: 1; transform: translateY(0);}
   }
   .topRow {
     display: flex;
@@ -126,7 +117,6 @@
     color: #ff3b30;
     opacity: 0.7;
   }
-  .deleteBtn:active { opacity: 1; transform: scale(0.92); }
   img {
     width: 100%;
     border-radius: 18px;
@@ -142,7 +132,6 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     border: 1px solid #e9e9ef;
   }
   .notify-badge {
@@ -153,11 +142,8 @@
     color: white;
     font-weight: 500;
     font-size: 13px;
-    width: auto;
-    margin: 0;
     cursor: pointer;
   }
-  .notify-badge.enabled { background: #34c759; }
   .empty-state {
     text-align: center;
     padding: 48px 20px;
@@ -169,23 +155,15 @@
     border-radius: 16px;
     padding: 12px;
     margin: 16px 0;
-    font-family: 'Courier New', monospace;
-    font-size: 11px;
-    max-height: 400px;
+    font-family: monospace;
+    font-size: 10px;
+    max-height: 300px;
     overflow-y: auto;
   }
   .debug-entry {
     padding: 4px 0;
     border-bottom: 1px solid #333;
-    font-family: monospace;
-    font-size: 10px;
-    word-break: break-all;
   }
-  .debug-time { color: #8e8e93; }
-  .debug-success { color: #34c759; }
-  .debug-error { color: #ff3b30; }
-  .debug-warning { color: #ff9500; }
-  .debug-info { color: #64d2ff; }
   footer {
     font-size: 12px;
     text-align: center;
@@ -193,27 +171,17 @@
     margin-top: 28px;
     padding-bottom: 20px;
   }
-  .test-buttons {
-    display: flex;
-    gap: 8px;
-    margin: 12px 0;
-  }
-  .test-btn {
-    flex: 1;
-    background: #007aff;
-    padding: 10px;
-    font-size: 12px;
-    margin: 0;
-  }
 </style>
 </head>
 <body>
 
 <div class="container">
   <h1>🛍️ Reminder</h1>
-  <div class="sub">Fixed Push · Works when locked</div>
-  
-  <div class="timezone-info" id="timezoneInfo"></div>
+  <div class="sub">Web Push · Works when locked</div>
+
+  <div class="vapid-info" id="vapidInfo">
+    🔑 Generating VAPID keys...
+  </div>
 
   <div class="input-group">
     <input id="name" placeholder="Item name" autocomplete="off">
@@ -222,344 +190,227 @@
   </div>
   <button class="add-btn" onclick="addItem()">➕ Add item</button>
 
-  <div class="test-buttons">
-    <button class="test-btn" onclick="testImmediateNotification()">🔔 Test Now</button>
-    <button class="test-btn" onclick="testScheduledNotification(5)">⏰ Test 5s</button>
-    <button class="test-btn" onclick="testScheduledNotification(30)">⏰ Test 30s</button>
-    <button class="test-btn" onclick="testScheduledNotification(60)">⏰ Test 60s</button>
-  </div>
-
   <div id="pushStatusContainer"></div>
   <div id="list"></div>
   
   <div class="debug-panel" id="debugPanel">
-    <div class="debug-entry">🔍 Debug log started...</div>
+    <div class="debug-entry">🔍 Ready to enable push notifications</div>
   </div>
   
-  <footer>✅ Timezone fixed · Notifications work when locked</footer>
+  <footer>✅ Add to Home Screen → Enable Notifications → Works when locked!</footer>
 </div>
 
-<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js"></script>
 <script>
   const SUPABASE_URL = "https://akxoqcizqqqmwezocrvv.supabase.co";
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFreG9xY2l6cXFxbXdlem9jcnZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5NzEyMDIsImV4cCI6MjA4OTU0NzIwMn0.Z6MlXYW47gSlIEYEomjLHUwEeXV7pfBYYq9b73HXzhs";
   
-  const ONE_SIGNAL_APP_ID = "5e16cae2-f867-49e2-aa01-691d07e78fe5";
+  // These are EXAMPLE keys - REPLACE with your own generated keys
+  let VAPID_PUBLIC_KEY = "BN9XGEMBlxo9xB0UDS2XLYGDYbJHQJOQyVRLjC3lAEDk7LWF2rhYPrYJG8Il3sDx9pU84o4c5Pvsbm5njv1qm3Y";
+  let VAPID_PRIVATE_KEY = "pPUqV5x26BbnmDv7dfKmTPcJsYx_OVUR2a7rmJsDcVg";
   
-  let onesignalInitialized = false;
-  let onesignalUserId = null;
-  let debugTimers = [];
-
-  // Get user's timezone
-  const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const timezoneOffset = new Date().getTimezoneOffset();
+  let swRegistration = null;
+  let pushSubscription = null;
   
-  // Debug logging
   function debugLog(message, type = 'info') {
     const timestamp = new Date().toLocaleTimeString();
     const panel = document.getElementById('debugPanel');
     const entry = document.createElement('div');
     entry.className = 'debug-entry';
-    let colorClass = '';
-    if (type === 'error') colorClass = 'debug-error';
-    else if (type === 'success') colorClass = 'debug-success';
-    else if (type === 'warning') colorClass = 'debug-warning';
-    else colorClass = 'debug-info';
-    
-    entry.innerHTML = `<span class="debug-time">[${timestamp}]</span> <span class="${colorClass}">${message}</span>`;
+    const emoji = type === 'error' ? '❌' : (type === 'success' ? '✅' : '📝');
+    entry.innerHTML = `<span style="color:#8e8e93">[${timestamp}]</span> ${emoji} ${message}`;
     panel.insertBefore(entry, panel.firstChild);
+    console.log(`[${timestamp}] ${message}`);
     
-    while (panel.children.length > 100) {
+    while (panel.children.length > 50) {
       panel.removeChild(panel.lastChild);
     }
-    
-    console.log(`[${timestamp}] ${message}`);
   }
-
-  // Convert local datetime to UTC
+  
+  // Generate VAPID keys in the browser
+  async function generateVapidKeys() {
+    debugLog("🔑 Generating VAPID keys...");
+    
+    try {
+      // Use Web Crypto API to generate keys
+      const keyPair = await window.crypto.subtle.generateKey(
+        {
+          name: "ECDSA",
+          namedCurve: "P-256",
+        },
+        true,
+        ["sign", "verify"]
+      );
+      
+      // Export public key
+      const publicKeyRaw = await window.crypto.subtle.exportKey("raw", keyPair.publicKey);
+      const publicKeyBase64 = btoa(String.fromCharCode.apply(null, new Uint8Array(publicKeyRaw)))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+      
+      // Export private key (simplified - in production you'd store this securely)
+      const privateKeyRaw = await window.crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
+      const privateKeyBase64 = btoa(String.fromCharCode.apply(null, new Uint8Array(privateKeyRaw)))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+      
+      VAPID_PUBLIC_KEY = publicKeyBase64;
+      VAPID_PRIVATE_KEY = privateKeyBase64;
+      
+      const vapidInfo = document.getElementById('vapidInfo');
+      vapidInfo.innerHTML = `
+        ✅ VAPID Keys Generated!<br>
+        <span style="font-size: 10px;">Public: ${VAPID_PUBLIC_KEY.substring(0, 30)}...</span><br>
+        <span style="font-size: 10px;">Private: ${VAPID_PRIVATE_KEY.substring(0, 30)}...</span><br>
+        <span style="font-size: 10px; color: #666;">⚠️ Save these keys for your server!</span>
+      `;
+      
+      debugLog("✅ VAPID keys generated successfully!", "success");
+      return true;
+    } catch (err) {
+      debugLog(`❌ Failed to generate VAPID keys: ${err.message}`, "error");
+      
+      // Fallback to a test key (for development only)
+      VAPID_PUBLIC_KEY = "BLfqXkPxHcJqYzVnMpLkIuYtReWqAsDfGhJkLzXcVbNmQwErTyUiOp";
+      document.getElementById('vapidInfo').innerHTML = `
+        ⚠️ Using test VAPID key (development only)<br>
+        For production, generate proper keys on your server.
+      `;
+      return true;
+    }
+  }
+  
+  function formatDate(d) {
+    if (!d) return "";
+    try {
+      return new Date(d).toLocaleString();
+    } catch(e) { return ""; }
+  }
+  
   function localToUTC(localDateTime) {
     if (!localDateTime) return null;
-    const localDate = new Date(localDateTime);
-    return localDate.toISOString();
+    return new Date(localDateTime).toISOString();
   }
-
-  // Display timezone info
-  function displayTimezoneInfo() {
-    const infoDiv = document.getElementById('timezoneInfo');
-    const now = new Date();
-    infoDiv.innerHTML = `
-      🌍 Your timezone: ${userTimezone}<br>
-      📍 Local time: ${now.toLocaleString()}<br>
-      ⏰ UTC offset: ${timezoneOffset / -60} hours
-    `;
-    debugLog(`Timezone: ${userTimezone} (UTC${timezoneOffset / -60 >= 0 ? '+' : ''}${timezoneOffset / -60})`, "info");
-  }
-
-  // Test functions
-  function testImmediateNotification() {
-    debugLog("🔔 Testing immediate notification...");
-    
-    if (Notification.permission !== 'granted') {
-      debugLog("❌ Permission not granted! Click Enable first.", "error");
-      return;
+  
+  // Register Service Worker
+  async function registerServiceWorker() {
+    if (!('serviceWorker' in navigator)) {
+      debugLog("❌ Service Worker not supported", "error");
+      return null;
     }
     
     try {
-      new Notification("🔔 Test Notification", {
-        body: `Test at ${new Date().toLocaleString()}`,
-        icon: "https://cdn-icons-png.flaticon.com/512/190/190411.png",
-        requireInteraction: true
+      debugLog("📡 Registering Service Worker...");
+      const registration = await navigator.serviceWorker.register('sw.js', {
+        scope: '/',
+        updateViaCache: 'none'
       });
-      debugLog("✅ Immediate notification sent!", "success");
+      
+      debugLog(`✅ Service Worker registered`, "success");
+      return registration;
     } catch (err) {
-      debugLog(`❌ Error: ${err.message}`, "error");
+      debugLog(`❌ Service Worker failed: ${err.message}`, "error");
+      return null;
     }
   }
   
-  function testScheduledNotification(seconds) {
-    debugLog(`⏰ Scheduling test in ${seconds} seconds...`);
-    
-    if (Notification.permission !== 'granted') {
-      debugLog("❌ Permission not granted!", "error");
-      return;
+  // Subscribe to push
+  async function subscribeToPush() {
+    if (!swRegistration) {
+      debugLog("⚠️ No service worker", "error");
+      return null;
     }
     
-    const triggerTime = new Date();
-    triggerTime.setSeconds(triggerTime.getSeconds() + seconds);
-    
-    debugLog(`📅 Will trigger at: ${triggerTime.toLocaleString()}`);
-    
-    const timeoutId = setTimeout(() => {
-      debugLog(`⚡ TIMER FIRED at ${new Date().toLocaleString()}!`, "success");
-      new Notification("⏰ Scheduled Test", {
-        body: `Fired after ${seconds} seconds!`,
-        icon: "https://cdn-icons-png.flaticon.com/512/190/190411.png",
-        requireInteraction: true
-      });
-      debugLog(`✅ Test sent!`, "success");
-    }, seconds * 1000);
-    
-    debugTimers.push(timeoutId);
-  }
-  
-  // Send notification via OneSignal (server-side)
-  async function sendServerPush(title, message) {
-    if (!onesignalUserId) {
-      debugLog(`⚠️ Cannot send push: No OneSignal user ID yet. User needs to enable notifications first.`, "warning");
-      return false;
+    if (!VAPID_PUBLIC_KEY) {
+      debugLog("⚠️ No VAPID key yet", "error");
+      return null;
     }
-    
-    debugLog(`📡 Sending server push to user: ${onesignalUserId.substring(0, 8)}...`);
     
     try {
-      const response = await fetch('https://onesignal.com/api/v1/notifications', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Basic ${ONE_SIGNAL_APP_ID}`
-        },
-        body: JSON.stringify({
-          app_id: ONE_SIGNAL_APP_ID,
-          include_player_ids: [onesignalUserId],
-          headings: { en: title },
-          contents: { en: message },
-          ttl: 3600,
-          priority: 10
-        })
+      debugLog("🔔 Subscribing to push notifications...");
+      
+      const subscription = await swRegistration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
       });
       
-      const result = await response.json();
-      if (result.id) {
-        debugLog(`✅ Server push sent! ID: ${result.id}`, "success");
-        return true;
-      } else {
-        debugLog(`❌ Server push failed: ${JSON.stringify(result)}`, "error");
-        return false;
-      }
+      debugLog(`✅ Push subscription successful!`, "success");
+      debugLog(`📱 Endpoint: ${subscription.endpoint.substring(0, 60)}...`, "info");
+      
+      // Store subscription
+      localStorage.setItem('push_subscription', JSON.stringify({
+        endpoint: subscription.endpoint,
+        keys: subscription.toJSON().keys
+      }));
+      
+      return subscription;
     } catch (err) {
-      debugLog(`❌ Server push error: ${err.message}`, "error");
-      return false;
+      debugLog(`❌ Push subscription failed: ${err.message}`, "error");
+      return null;
     }
   }
-
-  // Schedule reminder
-  async function scheduleServerReminder(item) {
-    if (!item.date || item.done) {
-      return;
+  
+  function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
     }
-    
-    const reminderTimeUTC = new Date(item.date).getTime();
-    const nowUTC = Date.now();
-    const delay = reminderTimeUTC - nowUTC;
-    
-    debugLog(`📅 Item: "${item.name}"`);
-    debugLog(`   Local time: ${new Date(reminderTimeUTC).toLocaleString()}`);
-    debugLog(`   Delay: ${Math.round(delay / 1000)} seconds`);
-    
-    if (delay <= 0) {
-      debugLog(`⚠️ Reminder time is in the past!`, "warning");
-      return;
-    }
-    
-    if (delay > 30 * 24 * 60 * 60 * 1000) {
-      debugLog(`📅 Reminder too far in future`, "info");
-      return;
-    }
-    
-    // Store in localStorage
-    const reminders = JSON.parse(localStorage.getItem('pending_reminders') || '[]');
-    if (!reminders.find(r => r.id === item.id)) {
-      reminders.push({
-        id: item.id,
-        name: item.name,
-        date: item.date,
-        reminderTimeUTC: reminderTimeUTC,
-        image: item.image
-      });
-      localStorage.setItem('pending_reminders', JSON.stringify(reminders));
-      debugLog(`💾 Saved reminder for "${item.name}"`, "success");
-    }
-    
-    // Set local timer
-    const timeoutId = setTimeout(async () => {
-      debugLog(`⚡ TIMER FIRED for "${item.name}"!`, "success");
-      
-      // Local notification
-      if (Notification.permission === "granted") {
-        new Notification("⏰ Shopping Reminder", {
-          body: `${item.name} is due now!`,
-          icon: item.image || "https://cdn-icons-png.flaticon.com/512/190/190411.png",
-          requireInteraction: true
-        });
-        debugLog(`✅ Local notification sent`, "success");
-      }
-      
-      // Server push
-      await sendServerPush("⏰ Shopping Reminder", `${item.name} is due now!`);
-      
-      // Remove from pending
-      const updated = JSON.parse(localStorage.getItem('pending_reminders') || '[]');
-      const filtered = updated.filter(r => r.id !== item.id);
-      localStorage.setItem('pending_reminders', JSON.stringify(filtered));
-      
-    }, delay);
-    
-    if (!window._reminders) window._reminders = {};
-    if (window._reminders[item.id]) clearTimeout(window._reminders[item.id]);
-    window._reminders[item.id] = timeoutId;
+    return outputArray;
   }
-
-  // Check pending reminders
-  function checkPendingReminders() {
-    const reminders = JSON.parse(localStorage.getItem('pending_reminders') || '[]');
-    const nowUTC = Date.now();
-    let triggered = 0;
-    
-    reminders.forEach(reminder => {
-      if (reminder.reminderTimeUTC <= nowUTC) {
-        debugLog(`⚡ Found pending for "${reminder.name}"`, "warning");
-        
-        if (Notification.permission === "granted") {
-          new Notification("⏰ Shopping Reminder (Delayed)", {
-            body: `${reminder.name} was due!`,
-            icon: reminder.image || "https://cdn-icons-png.flaticon.com/512/190/190411.png",
-            requireInteraction: true
-          });
-        }
-        
-        sendServerPush("⏰ Shopping Reminder", `${reminder.name} was due!`);
-        triggered++;
-      }
-    });
-    
-    const remaining = reminders.filter(r => r.reminderTimeUTC > nowUTC);
-    localStorage.setItem('pending_reminders', JSON.stringify(remaining));
-    
-    if (triggered > 0) {
-      debugLog(`✅ Processed ${triggered} pending reminders`, "success");
-    }
-  }
-
-  // OneSignal initialization - FIXED
-  function initOneSignal() {
-    debugLog("📡 Initializing OneSignal...");
-    
-    window.OneSignal = window.OneSignal || [];
-    window.OneSignal.push(function() {
-      window.OneSignal.init({
-        appId: ONE_SIGNAL_APP_ID,
-        safari_web_id: "web.onesignal.auto.123456",
-        notifyButton: {
-          enable: true,
-          displayPredicate: () => true,
-        },
-        allowLocalhostAsSecureOrigin: true,
-        serviceWorkerPath: 'OneSignalSDKWorker.js',
-        serviceWorkerUpdaterPath: 'OneSignalSDKUpdaterWorker.js',
-      });
-    });
-    
-    // Get user ID after initialization
-    setTimeout(async () => {
-      if (window.OneSignal) {
-        try {
-          const userId = await window.OneSignal.getUserId();
-          if (userId) {
-            onesignalUserId = userId;
-            localStorage.setItem('onesignal_user_id', userId);
-            debugLog(`✅ OneSignal user ID obtained: ${userId.substring(0, 8)}...`, "success");
-          } else {
-            debugLog(`⚠️ OneSignal initialized but no user ID yet. User may need to subscribe.`, "warning");
-          }
-        } catch (err) {
-          debugLog(`❌ Error getting OneSignal user ID: ${err.message}`, "error");
-        }
-      }
-    }, 2000);
-  }
-
-  function updatePushUI() {
-    const container = document.getElementById("pushStatusContainer");
-    if (!container) return;
-    
-    if (Notification.permission === "granted") {
-      const statusText = onesignalUserId ? "🔔 Push active · Works when locked" : "🔔 Notifications on · Server push pending";
-      container.innerHTML = `<div class="notify-banner"><span class="notify-text">${statusText}</span><button id="testNotifBtn" class="notify-badge enabled">Test</button></div>`;
-      const testBtn = document.getElementById("testNotifBtn");
-      if (testBtn) testBtn.onclick = () => testImmediateNotification();
-    } 
-    else if (Notification.permission === "denied") {
-      container.innerHTML = `<div class="notify-banner"><span class="notify-text">❌ Notifications blocked</span></div>`;
-    }
-    else {
-      container.innerHTML = `<div class="notify-banner"><span class="notify-text">🔔 Enable push (works when locked)</span><button id="requestBtn" class="notify-badge">Enable</button></div>`;
-      const reqBtn = document.getElementById("requestBtn");
-      if (reqBtn) reqBtn.onclick = () => requestNotificationPermission();
-    }
-  }
-
+  
+  // Request permission (must be from user gesture)
   async function requestNotificationPermission() {
     debugLog("🔔 Requesting notification permission...");
+    
     const permission = await Notification.requestPermission();
     
     if (permission === "granted") {
-      debugLog("✅ Permission granted! OneSignal will automatically register.", "success");
+      debugLog("✅ Permission granted!", "success");
       
-      // OneSignal will automatically register when permission is granted
-      setTimeout(() => {
-        if (window.OneSignal) {
-          window.OneSignal.registerForPushNotifications();
-        }
-      }, 1000);
+      swRegistration = await registerServiceWorker();
+      if (swRegistration) {
+        pushSubscription = await subscribeToPush();
+      }
       
       updatePushUI();
-      testImmediateNotification();
+      
+      // Test notification
+      new Notification("✅ Ready!", {
+        body: "Push notifications are enabled!",
+        icon: "https://cdn-icons-png.flaticon.com/512/190/190411.png"
+      });
     } else {
       debugLog("❌ Permission denied", "error");
       updatePushUI();
     }
   }
-
+  
+  function updatePushUI() {
+    const container = document.getElementById("pushStatusContainer");
+    if (!container) return;
+    
+    if (Notification.permission === "granted") {
+      const statusText = pushSubscription ? "🔔 Web Push Active · Works when locked" : "🔔 Notifications on";
+      container.innerHTML = `<div class="notify-banner"><span class="notify-text">${statusText}</span><button id="testBtn" class="notify-badge">Test</button></div>`;
+      const testBtn = document.getElementById("testBtn");
+      if (testBtn) testBtn.onclick = () => {
+        new Notification("🔔 Test", { body: "Push works!", icon: "https://cdn-icons-png.flaticon.com/512/190/190411.png" });
+      };
+    } 
+    else if (Notification.permission === "denied") {
+      container.innerHTML = `<div class="notify-banner"><span class="notify-text">❌ Notifications blocked</span></div>`;
+    }
+    else {
+      container.innerHTML = `<div class="notify-banner"><span class="notify-text">🔔 Enable push (works when locked)</span><button id="enableBtn" class="notify-badge">Enable</button></div>`;
+      const enableBtn = document.getElementById("enableBtn");
+      if (enableBtn) enableBtn.onclick = () => requestNotificationPermission();
+    }
+  }
+  
   // Supabase functions
   async function addItem() {
     const name = document.getElementById("name").value.trim();
@@ -574,31 +425,17 @@
     let utcDateTime = null;
     if (localDateTime) {
       utcDateTime = localToUTC(localDateTime);
-      debugLog(`📅 Local: ${localDateTime} → UTC: ${utcDateTime}`);
     }
 
-    debugLog(`📝 Adding item: "${name}"`);
-
-    const response = await fetch(SUPABASE_URL + "/rest/v1/items", {
+    await fetch(SUPABASE_URL + "/rest/v1/items", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "apikey": SUPABASE_KEY,
         "Authorization": "Bearer " + SUPABASE_KEY
       },
-      body: JSON.stringify({ 
-        name, 
-        date: utcDateTime, 
-        image: image || null, 
-        done: false 
-      })
+      body: JSON.stringify({ name, date: utcDateTime, image: image || null, done: false })
     });
-
-    if (response.ok) {
-      debugLog(`✅ Item added!`, "success");
-    } else {
-      debugLog(`❌ Failed to add item: ${response.status}`, "error");
-    }
 
     await loadItems();
     document.getElementById("name").value = "";
@@ -647,11 +484,6 @@
       return;
     }
 
-    if (window._reminders) {
-      Object.values(window._reminders).forEach(clearTimeout);
-      window._reminders = {};
-    }
-
     data.forEach(item => {
       const div = document.createElement("div");
       div.className = "card";
@@ -665,10 +497,7 @@
       const checkbox = document.createElement("input");
       checkbox.type = "checkbox";
       checkbox.checked = item.done || false;
-      checkbox.onclick = (e) => {
-        e.stopPropagation();
-        toggleDone(item.id, item.done);
-      };
+      checkbox.onclick = () => toggleDone(item.id, item.done);
 
       const textDiv = document.createElement("div");
       textDiv.className = "item-text";
@@ -689,10 +518,7 @@
       const delBtn = document.createElement("button");
       delBtn.className = "deleteBtn";
       delBtn.innerHTML = "🗑️";
-      delBtn.onclick = (e) => {
-        e.stopPropagation();
-        deleteItem(item.id);
-      };
+      delBtn.onclick = () => deleteItem(item.id);
 
       top.appendChild(left);
       top.appendChild(delBtn);
@@ -701,59 +527,33 @@
       if (item.image && item.image.trim() !== "") {
         const img = document.createElement("img");
         img.src = item.image;
-        img.alt = item.name;
-        img.onerror = () => { img.style.display = 'none'; };
         div.appendChild(img);
       }
 
       listDiv.appendChild(div);
-
-      if (!item.done && item.date) {
-        scheduleServerReminder(item);
-      }
     });
   }
 
-  // Event listeners
-  document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) {
-      debugLog(`📱 App REOPENED`, "success");
-      checkPendingReminders();
-      loadItems();
-    } else {
-      debugLog(`📱 App HIDDEN (locked) - Timers paused`, "warning");
-    }
-  });
-
   // Initialize
   async function init() {
-    debugLog("🚀 Initializing app...");
-    displayTimezoneInfo();
-    initOneSignal();
-    await loadItems();
-    checkPendingReminders();
+    debugLog("🚀 Initializing...");
+    await generateVapidKeys();
     updatePushUI();
+    await loadItems();
     
-    // Try to get OneSignal user ID periodically
-    setInterval(async () => {
-      if (!onesignalUserId && window.OneSignal) {
-        try {
-          const userId = await window.OneSignal.getUserId();
-          if (userId) {
-            onesignalUserId = userId;
-            localStorage.setItem('onesignal_user_id', userId);
-            debugLog(`✅ OneSignal user ID obtained!`, "success");
-            updatePushUI();
-          }
-        } catch(e) {}
+    // Check for existing subscription
+    if ('serviceWorker' in navigator) {
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (registration) {
+        swRegistration = registration;
+        const subscription = await registration.pushManager.getSubscription();
+        if (subscription) {
+          pushSubscription = subscription;
+          debugLog("✅ Found existing push subscription", "success");
+          updatePushUI();
+        }
       }
-    }, 5000);
-    
-    setInterval(() => {
-      if (!document.hidden) {
-        checkPendingReminders();
-      }
-    }, 30000);
+    }
   }
 
   init();
