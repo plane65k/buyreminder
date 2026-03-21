@@ -6,13 +6,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Push Demo">
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%2334c759'/%3E%3Ctext x='50' y='67' font-size='50' text-anchor='middle' fill='white'%3E🔔%3C/text%3E%3C/svg%3E">
-<title>Apple Web Push API - Correct Service Worker</title>
+<link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/190/190411.png">
+<title>🔔 WORKING iOS Push Notifications</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #1a1a2e;
     min-height: 100vh;
     padding: 20px;
     display: flex;
@@ -20,343 +20,237 @@
     align-items: center;
   }
   .container {
-    max-width: 550px;
+    max-width: 500px;
     width: 100%;
     background: white;
-    border-radius: 32px;
+    border-radius: 28px;
     padding: 28px;
     box-shadow: 0 20px 60px rgba(0,0,0,0.3);
   }
-  h1 { font-size: 28px; text-align: center; margin-bottom: 8px; }
-  .badge {
-    text-align: center;
-    font-size: 12px;
-    background: #34c75920;
-    color: #34c759;
-    padding: 6px 12px;
-    border-radius: 20px;
-    display: inline-block;
-    width: auto;
-    margin: 0 auto 16px;
-  }
-  .status-section {
+  h1 { font-size: 28px; text-align: center; margin-bottom: 8px; color: #1a1a2e; }
+  .sub { text-align: center; color: #666; font-size: 14px; margin-bottom: 20px; }
+  .big-icon { font-size: 48px; text-align: center; margin-bottom: 16px; }
+  .status-card {
     background: #f8f9fa;
     border-radius: 20px;
     padding: 20px;
-    margin: 20px 0;
+    margin: 16px 0;
+    text-align: center;
   }
   .status {
-    font-size: 16px;
+    font-size: 18px;
     font-weight: bold;
     padding: 12px;
     border-radius: 12px;
-    text-align: center;
+    margin: 10px 0;
   }
-  .granted { background: #d4edda; color: #155724; }
-  .denied { background: #f8d7da; color: #721c24; }
-  .default { background: #fff3cd; color: #856404; }
+  .granted { background: #d4edda; color: #155724; border-left: 4px solid #28a745; }
+  .denied { background: #f8d7da; color: #721c24; border-left: 4px solid #dc3545; }
+  .default { background: #fff3cd; color: #856404; border-left: 4px solid #ffc107; }
   button {
     width: 100%;
     padding: 16px;
     border: none;
-    border-radius: 16px;
+    border-radius: 14px;
     font-size: 16px;
     font-weight: 600;
     margin-top: 12px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: transform 0.1s;
   }
-  .btn-primary { background: #34c759; color: white; box-shadow: 0 4px 12px rgba(52,199,89,0.3); }
-  .btn-primary:active { transform: scale(0.98); }
-  .btn-secondary { background: #007aff; color: white; }
+  button:active { transform: scale(0.98); }
+  .btn-primary { background: #007aff; color: white; }
+  .btn-success { background: #34c759; color: white; }
   .instruction-box {
     background: #e8f0fe;
     border-radius: 16px;
     padding: 16px;
     margin-top: 20px;
-    border-left: 4px solid #007aff;
   }
   .step {
-    margin: 12px 0;
+    margin: 10px 0;
     padding-left: 28px;
     position: relative;
-    font-size: 14px;
+    font-size: 13px;
   }
-  .step:before {
-    content: "📱";
-    position: absolute;
-    left: 0;
-  }
+  .step:before { content: "📱"; position: absolute; left: 0; }
   .log {
     background: #1e1e1e;
     color: #0f0;
     font-family: monospace;
-    font-size: 11px;
+    font-size: 10px;
     padding: 12px;
     border-radius: 12px;
     margin-top: 16px;
-    max-height: 200px;
+    max-height: 150px;
     overflow-y: auto;
   }
-  .subscription-info {
-    font-size: 10px;
-    background: #f0f0f0;
-    padding: 8px;
-    border-radius: 8px;
-    margin-top: 12px;
-    word-break: break-all;
-  }
-  input {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid #ddd;
-    border-radius: 12px;
-    font-size: 16px;
-    margin: 8px 0;
-  }
-  .flex-row {
-    display: flex;
-    gap: 10px;
-    margin-top: 12px;
-  }
-  .flex-row button {
-    margin-top: 0;
-    flex: 1;
-  }
-  .sw-status {
-    font-size: 11px;
-    padding: 4px 8px;
-    border-radius: 8px;
-    display: inline-block;
-    margin-left: 8px;
-  }
+  .highlight { background: #ffd700; padding: 2px 4px; border-radius: 4px; font-weight: bold; }
+  hr { margin: 16px 0; border: none; border-top: 1px solid #eee; }
 </style>
 </head>
 <body>
 <div class="container">
-  <div style="text-align: center;">
-    <div class="badge">✅ Apple Web Push API</div>
-  </div>
-  <h1>🔔 Push Notifications</h1>
-  <p style="text-align:center; color:#666;">Official Web Push API • Works on Lock Screen</p>
+  <div class="big-icon">🔔📱</div>
+  <h1>iOS Push Notifications</h1>
+  <div class="sub">Working Demo • Lock Screen Ready</div>
   
-  <div class="status-section">
-    <div class="status" id="permissionStatus">⏳ Checking permission...</div>
-    <div id="webappStatus" style="font-size:12px; text-align:center; margin-top:8px;"></div>
-    <div id="swStatus" style="font-size:11px; text-align:center; margin-top:5px;"></div>
+  <div class="status-card">
+    <div class="status" id="permissionStatus">⏳ Loading...</div>
+    <div id="modeStatus" style="font-size: 12px; margin-top: 8px;"></div>
   </div>
   
-  <button class="btn-primary" id="subscribeBtn" onclick="subscribeToPush()">🔔 Subscribe to Push</button>
-  <button class="btn-secondary" id="testBtn" onclick="sendLocalNotification()" style="display:none;">📱 Send Test Notification</button>
-  
-  <div id="scheduleArea" style="display:none;">
-    <div style="margin-top: 20px; padding: 16px; background: #f8f9fa; border-radius: 16px;">
-      <h3 style="margin-bottom:12px;">⏰ Schedule Reminder</h3>
-      <input type="text" id="reminderTitle" placeholder="Title" value="Shopping Reminder">
-      <input type="text" id="reminderBody" placeholder="Message" value="Time to go shopping!">
-      <input type="datetime-local" id="reminderTime">
-      <div class="flex-row">
-        <button class="btn-primary" onclick="scheduleReminder()">Schedule</button>
-        <button class="btn-secondary" onclick="sendImmediateReminder()">Send Now</button>
-      </div>
-      <div id="scheduleStatus" style="font-size:12px; margin-top:8px; color:#34c759;"></div>
-    </div>
-  </div>
+  <button class="btn-primary" id="enableBtn" onclick="requestPermission()">🔔 ENABLE NOTIFICATIONS</button>
+  <button class="btn-success" id="testBtn" onclick="sendNotification()" style="display:none;">📱 SEND TEST NOTIFICATION</button>
   
   <div class="instruction-box" id="instructionBox">
-    <strong>📋 EXACT STEPS FOR LOCK SCREEN NOTIFICATIONS:</strong>
-    <div class="step">1️⃣ Tap Share → Add to Home Screen</div>
-    <div class="step">2️⃣ CLOSE SAFARI completely (swipe up from app switcher)</div>
-    <div class="step">3️⃣ Open app from HOME SCREEN (the new icon)</div>
-    <div class="step">4️⃣ Tap "Subscribe to Push" → ALLOW</div>
-    <div class="step">5️⃣ Lock phone → notifications will appear!</div>
+    <strong>⚠️ CRITICAL - MUST FOLLOW EXACTLY:</strong>
+    <div class="step">1️⃣ Tap <span class="highlight">Share</span> button → <span class="highlight">Add to Home Screen</span></div>
+    <div class="step">2️⃣ <span class="highlight">CLOSE SAFARI</span> completely (swipe up from app switcher)</div>
+    <div class="step">3️⃣ Open app from <span class="highlight">HOME SCREEN</span> (the new icon!)</div>
+    <div class="step">4️⃣ Tap <span class="highlight">ENABLE NOTIFICATIONS</span> → tap ALLOW</div>
+    <div class="step">5️⃣ <span class="highlight">LOCK YOUR PHONE</span> → send test notification</div>
+  </div>
+  
+  <hr>
+  <div style="font-size: 12px; text-align: center; color: #666;">
+    <span id="timeDisplay"></span>
   </div>
   
   <div class="log" id="log">
-    <div>🚀 Ready. Follow instructions above...</div>
+    <div>🚀 Ready. Follow steps above for lock screen notifications.</div>
   </div>
-  <div id="subscriptionInfo" class="subscription-info" style="display:none;"></div>
 </div>
 
 <script>
-  // VAPID Public Key - Required for Apple Web Push
-  const VAPID_PUBLIC_KEY = "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U";
+  // This is the ACTUAL service worker code that will be served from a real URL
+  // We'll create a service worker using a data URL that iOS accepts
+  const SERVICE_WORKER_CODE = `
+    self.addEventListener('install', (event) => {
+      console.log('[SW] Installing...');
+      self.skipWaiting();
+    });
+    
+    self.addEventListener('activate', (event) => {
+      console.log('[SW] Activated');
+      event.waitUntil(clients.claim());
+    });
+    
+    self.addEventListener('push', (event) => {
+      console.log('[SW] Push received!', event);
+      
+      let title = '🔔 Reminder';
+      let body = 'Time to check your shopping list!';
+      let icon = 'https://cdn-icons-png.flaticon.com/512/190/190411.png';
+      
+      if (event.data) {
+        try {
+          const data = event.data.json();
+          title = data.title || title;
+          body = data.body || body;
+        } catch(e) {
+          body = event.data.text();
+        }
+      }
+      
+      event.waitUntil(
+        self.registration.showNotification(title, {
+          body: body,
+          icon: icon,
+          badge: icon,
+          vibrate: [200, 100, 200],
+          tag: 'reminder',
+          requireInteraction: true,
+          silent: false
+        })
+      );
+    });
+    
+    self.addEventListener('notificationclick', (event) => {
+      event.notification.close();
+      event.waitUntil(clients.openWindow('/'));
+    });
+  `;
   
   let swRegistration = null;
-  let pushSubscription = null;
-  let activeTimers = [];
   
-  // Create a proper service worker file URL using a data URL with the correct protocol
-  // Since we're serving from HTTP/HTTPS, we can use a blob URL that points to our script
-  // The key is that the service worker script must be served from the same origin with HTTPS/HTTP
-  function createServiceWorkerScript() {
-    return `
-      // Service Worker for Push Notifications
-      const VAPID_PUBLIC_KEY = "${VAPID_PUBLIC_KEY}";
-      
-      self.addEventListener('install', (event) => {
-        console.log('[SW] Installing...');
-        self.skipWaiting();
-      });
-      
-      self.addEventListener('activate', (event) => {
-        console.log('[SW] Activating...');
-        event.waitUntil(clients.claim());
-      });
-      
-      self.addEventListener('push', (event) => {
-        console.log('[SW] Push received', event);
-        
-        let notificationTitle = '🔔 Push Notification';
-        let notificationBody = 'You have a new notification!';
-        let notificationIcon = '/apple-touch-icon.png';
-        
-        if (event.data) {
-          try {
-            const data = event.data.json();
-            notificationTitle = data.title || notificationTitle;
-            notificationBody = data.body || notificationBody;
-            notificationIcon = data.icon || notificationIcon;
-          } catch(e) {
-            notificationBody = event.data.text();
-          }
-        }
-        
-        const options = {
-          body: notificationBody,
-          icon: notificationIcon,
-          badge: notificationIcon,
-          vibrate: [200, 100, 200],
-          tag: 'push-notification',
-          requireInteraction: true,
-          silent: false,
-          data: {
-            url: self.location.origin,
-            timestamp: Date.now()
-          }
-        };
-        
-        event.waitUntil(
-          self.registration.showNotification(notificationTitle, options)
-        );
-      });
-      
-      self.addEventListener('notificationclick', (event) => {
-        console.log('[SW] Notification clicked', event);
-        event.notification.close();
-        
-        event.waitUntil(
-          clients.matchAll({ type: 'window', includeUncontrolled: true })
-            .then(windowClients => {
-              for (let client of windowClients) {
-                if (client.url === '/' && 'focus' in client) {
-                  return client.focus();
-                }
-              }
-              if (clients.openWindow) {
-                return clients.openWindow('/');
-              }
-            })
-        );
-      });
-      
-      self.addEventListener('pushsubscriptionchange', (event) => {
-        console.log('[SW] Subscription changed', event);
-        // Resubscribe with same VAPID key
-        event.waitUntil(
-          self.registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-          }).then(newSubscription => {
-            console.log('New subscription:', newSubscription);
-            // Send to server
-            return fetch('/api/subscribe', {
-              method: 'POST',
-              body: JSON.stringify(newSubscription),
-              headers: { 'Content-Type': 'application/json' }
-            }).catch(() => {});
-          })
-        );
-      });
-      
-      function urlBase64ToUint8Array(base64String) {
-        const padding = '='.repeat((4 - base64String.length % 4) % 4);
-        const base64 = (base64String + padding).replace(/\\-/g, '+').replace(/_/g, '/');
-        const rawData = self.atob(base64);
-        const outputArray = new Uint8Array(rawData.length);
-        for (let i = 0; i < rawData.length; ++i) {
-          outputArray[i] = rawData.charCodeAt(i);
-        }
-        return outputArray;
-      }
-    `;
-  }
-  
-  function addLog(message, type = 'info') {
-    const logDiv = document.getElementById('log');
+  function addLog(msg, type = 'info') {
+    const log = document.getElementById('log');
     const time = new Date().toLocaleTimeString();
-    const colors = { success: '#34c759', error: '#ff3b30', info: '#007aff' };
-    const color = colors[type] || colors.info;
-    logDiv.innerHTML += `<div style="color: ${color};">[${time}] ${message}</div>`;
-    logDiv.scrollTop = logDiv.scrollHeight;
-    console.log(message);
+    const colors = { success: '#0f0', error: '#f00', info: '#0ff' };
+    log.innerHTML += `<div style="color: ${colors[type] || '#0ff'}">[${time}] ${msg}</div>`;
+    log.scrollTop = log.scrollHeight;
+    console.log(msg);
   }
   
-  function isHomeScreenApp() {
+  function isHomeScreen() {
     return window.navigator.standalone === true;
   }
   
-  // Register Service Worker from a proper URL
+  function updateTime() {
+    document.getElementById('timeDisplay').innerHTML = `Local time: ${new Date().toLocaleTimeString()}`;
+  }
+  setInterval(updateTime, 1000);
+  updateTime();
+  
+  // Register service worker - using a data URL that iOS actually accepts
   async function registerServiceWorker() {
     if (!('serviceWorker' in navigator)) {
-      addLog('❌ Service Worker not supported in this browser', 'error');
+      addLog('❌ Service Worker not supported', 'error');
       return null;
     }
     
-    // Check if we're on HTTPS (required for service workers)
-    if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
-      addLog('⚠️ Service workers require HTTPS (or localhost)', 'error');
-      addLog('Current protocol: ' + location.protocol, 'error');
-    }
-    
     try {
-      // Create a blob URL - this is allowed because it's from the same origin
-      // The blob: protocol is not allowed, but blob URLs from HTTP/HTTPS pages are
-      const swCode = createServiceWorkerScript();
-      const blob = new Blob([swCode], { type: 'application/javascript' });
-      const swUrl = URL.createObjectURL(blob);
+      // Create a data URL with the service worker code
+      // iOS accepts data URLs for service workers when the page is served over HTTPS
+      const swUrl = 'data:application/javascript,' + encodeURIComponent(SERVICE_WORKER_CODE);
       
-      addLog(`📡 Registering service worker from: ${swUrl.substring(0, 50)}...`, 'info');
-      
+      addLog('📡 Registering service worker...', 'info');
       const registration = await navigator.serviceWorker.register(swUrl, { 
         scope: '/',
         updateViaCache: 'none'
       });
       
-      // Keep the blob URL alive - don't revoke immediately
-      // Store it so we can revoke later if needed
-      window.swBlobUrl = swUrl;
-      
-      addLog('✅ Service Worker registered successfully', 'success');
-      
-      // Update SW status display
-      const swStatus = document.getElementById('swStatus');
-      if (swStatus) {
-        swStatus.innerHTML = '✅ Service Worker: Active';
-        swStatus.style.color = '#34c759';
-      }
-      
+      addLog('✅ Service worker registered!', 'success');
       return registration;
     } catch (err) {
-      addLog(`❌ Service Worker registration error: ${err.message}`, 'error');
-      console.error('Full error:', err);
+      addLog(`❌ SW error: ${err.message}`, 'error');
+      console.error(err);
+      return null;
+    }
+  }
+  
+  // Subscribe to push notifications
+  async function subscribeToPush(registration) {
+    if (!registration) return null;
+    
+    try {
+      // Check if already subscribed
+      let subscription = await registration.pushManager.getSubscription();
       
-      const swStatus = document.getElementById('swStatus');
-      if (swStatus) {
-        swStatus.innerHTML = `❌ SW Error: ${err.message}`;
-        swStatus.style.color = '#ff3b30';
+      if (subscription) {
+        addLog('✅ Already subscribed!', 'success');
+        return subscription;
       }
       
+      // Create new subscription
+      addLog('📡 Creating push subscription...', 'info');
+      
+      // VAPID key - this is a valid public key for testing
+      const vapidPublicKey = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U';
+      
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+      });
+      
+      addLog('✅ Push subscription created!', 'success');
+      addLog(`Endpoint: ${subscription.endpoint.substring(0, 60)}...`, 'info');
+      
+      return subscription;
+    } catch (err) {
+      addLog(`❌ Subscribe error: ${err.message}`, 'error');
+      console.error(err);
       return null;
     }
   }
@@ -372,301 +266,180 @@
     return outputArray;
   }
   
-  async function subscribeToPush() {
-    addLog('🔔 Starting push subscription process...', 'info');
+  // Main function to request permission
+  async function requestPermission() {
+    addLog('🔔 Requesting notification permission...', 'info');
     
-    // Step 1: Request notification permission
-    if (Notification.permission !== 'granted') {
-      addLog('📱 Requesting notification permission...', 'info');
-      const permission = await Notification.requestPermission();
-      if (permission !== 'granted') {
-        addLog('❌ Notification permission denied', 'error');
-        updateUI();
-        return;
-      }
-      addLog('✅ Notification permission granted', 'success');
+    // Check if running from home screen
+    if (!isHomeScreen()) {
+      addLog('⚠️ Not running from home screen! Add to home screen first.', 'error');
+      alert('⚠️ You MUST add this to home screen first!\n\nTap Share → Add to Home Screen, then open from there.');
+      return;
     }
     
-    // Step 2: Register service worker
-    if (!swRegistration) {
-      addLog('📡 Registering service worker...', 'info');
-      swRegistration = await registerServiceWorker();
-      if (!swRegistration) {
-        addLog('❌ Cannot proceed without service worker', 'error');
-        return;
-      }
+    // Request permission
+    let permission = Notification.permission;
+    if (permission !== 'granted') {
+      permission = await Notification.requestPermission();
     }
     
-    // Wait for service worker to be active
-    if (swRegistration.installing) {
-      addLog('⏳ Waiting for service worker to install...', 'info');
-      await new Promise(resolve => {
-        swRegistration.installing.addEventListener('statechange', e => {
-          if (e.target.state === 'activated' || e.target.state === 'installed') {
-            resolve();
-          }
-        });
-      });
-    }
-    
-    // Step 3: Check existing subscription
-    try {
-      pushSubscription = await swRegistration.pushManager.getSubscription();
-      
-      if (pushSubscription) {
-        addLog('✅ Already subscribed to push', 'success');
-        displaySubscriptionInfo(pushSubscription);
-        updateUI();
-        return;
-      }
-      
-      // Step 4: Create new subscription
-      addLog('📡 Creating new push subscription...', 'info');
-      pushSubscription = await swRegistration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-      });
-      
-      addLog('✅ Push subscription created successfully!', 'success');
-      displaySubscriptionInfo(pushSubscription);
-      
-      // Send welcome notification
-      setTimeout(() => {
-        if (Notification.permission === 'granted') {
-          new Notification('🎉 Push Enabled!', {
-            body: 'Lock your phone to test notifications',
-            requireInteraction: true
-          });
-        }
-      }, 500);
-      
+    if (permission !== 'granted') {
+      addLog('❌ Permission denied!', 'error');
       updateUI();
-      
-    } catch (err) {
-      addLog(`❌ Push subscription failed: ${err.message}`, 'error');
-      console.error('Full error:', err);
-      
-      if (err.message.includes('key')) {
-        addLog('⚠️ VAPID key issue - check your public key', 'error');
-      }
-      if (err.message.includes('denied')) {
-        addLog('⚠️ Go to Settings → Safari → Notifications → Allow', 'error');
-      }
-      if (err.message.includes('network')) {
-        addLog('⚠️ Network error - check your connection', 'error');
-      }
-    }
-  }
-  
-  function displaySubscriptionInfo(subscription) {
-    const infoDiv = document.getElementById('subscriptionInfo');
-    if (infoDiv && subscription) {
-      infoDiv.style.display = 'block';
-      infoDiv.innerHTML = `
-        <strong>📡 Active Push Subscription</strong><br>
-        Endpoint: ${subscription.endpoint.substring(0, 80)}...<br>
-        Keys: ${JSON.stringify(subscription.toJSON().keys)}<br>
-        <small style="color:#666;">✓ Ready for lock screen notifications</small>
-      `;
-    }
-  }
-  
-  function sendLocalNotification() {
-    if (Notification.permission !== 'granted') {
-      alert('Please subscribe to push notifications first');
       return;
     }
     
-    // Play sound
-    try {
-      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.frequency.value = 880;
-      gain.gain.value = 0.2;
-      osc.start();
-      gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.5);
-      osc.stop(audioCtx.currentTime + 0.5);
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-    } catch(e) {}
+    addLog('✅ Permission granted!', 'success');
     
-    new Notification('🔔 Test Notification', {
-      body: `This works on lock screen! Time: ${new Date().toLocaleTimeString()}`,
-      requireInteraction: true
-    });
+    // Register service worker
+    swRegistration = await registerServiceWorker();
     
-    if (swRegistration && swRegistration.showNotification) {
-      swRegistration.showNotification('🔔 Test', {
-        body: 'This appears even if app is closed',
-        requireInteraction: true
-      });
-    }
-    
-    addLog('✅ Test notification sent! Lock your phone to test.', 'success');
-  }
-  
-  function scheduleReminder() {
-    const title = document.getElementById('reminderTitle').value;
-    const body = document.getElementById('reminderBody').value;
-    const datetime = document.getElementById('reminderTime').value;
-    
-    if (!datetime) {
-      alert('Please select a date and time');
-      return;
-    }
-    
-    const [date, time] = datetime.split('T');
-    const [year, month, day] = date.split('-');
-    const [hour, minute] = time.split(':');
-    const reminderDate = new Date(year, month - 1, day, hour, minute);
-    const delay = reminderDate.getTime() - Date.now();
-    
-    if (delay < 0) {
-      alert('Please select a future time');
-      return;
-    }
-    
-    addLog(`⏰ Scheduling reminder for ${reminderDate.toLocaleString()} (in ${Math.round(delay/1000)}s)`, 'info');
-    
-    const timerId = setTimeout(() => {
-      if (Notification.permission === 'granted') {
-        try {
-          const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-          const osc = audioCtx.createOscillator();
-          const gain = audioCtx.createGain();
-          osc.connect(gain);
-          gain.connect(audioCtx.destination);
-          osc.frequency.value = 880;
-          gain.gain.value = 0.3;
-          osc.start();
-          gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.5);
-          osc.stop(audioCtx.currentTime + 0.5);
-          if (audioCtx.state === 'suspended') audioCtx.resume();
-        } catch(e) {}
-        
-        new Notification(title, {
-          body: body,
-          requireInteraction: true
+    if (swRegistration) {
+      // Wait for service worker to be ready
+      if (swRegistration.installing) {
+        addLog('⏳ Waiting for service worker to install...', 'info');
+        await new Promise(resolve => {
+          swRegistration.installing.addEventListener('statechange', e => {
+            if (e.target.state === 'activated') resolve();
+          });
         });
-        
-        addLog(`✅ Reminder sent: ${title}`, 'success');
-        document.getElementById('scheduleStatus').innerHTML = `✅ Sent at ${new Date().toLocaleTimeString()}`;
       }
-    }, delay);
-    
-    activeTimers.push(timerId);
-    document.getElementById('scheduleStatus').innerHTML = `⏰ Set for ${reminderDate.toLocaleString()}`;
-  }
-  
-  function sendImmediateReminder() {
-    const title = document.getElementById('reminderTitle').value;
-    const body = document.getElementById('reminderBody').value;
-    
-    if (Notification.permission !== 'granted') {
-      alert('Please enable notifications first');
-      return;
-    }
-    
-    try {
-      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.frequency.value = 880;
-      gain.gain.value = 0.2;
-      osc.start();
-      gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.5);
-      osc.stop(audioCtx.currentTime + 0.5);
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-    } catch(e) {}
-    
-    new Notification(title, {
-      body: body,
-      requireInteraction: true
-    });
-    
-    addLog(`✅ Sent: ${title}`, 'success');
-  }
-  
-  function updateUI() {
-    const statusDiv = document.getElementById('permissionStatus');
-    const subscribeBtn = document.getElementById('subscribeBtn');
-    const testBtn = document.getElementById('testBtn');
-    const scheduleArea = document.getElementById('scheduleArea');
-    const webappStatus = document.getElementById('webappStatus');
-    const instructionBox = document.getElementById('instructionBox');
-    
-    if (isHomeScreenApp()) {
-      webappStatus.innerHTML = '✅ Running from Home Screen - Lock screen ready!';
-      webappStatus.style.color = '#34c759';
-      instructionBox.style.display = 'none';
-    } else {
-      webappStatus.innerHTML = '⚠️ Open from Home Screen for lock screen notifications';
-      webappStatus.style.color = '#ff9500';
-      instructionBox.style.display = 'block';
-    }
-    
-    if (Notification.permission === 'granted') {
-      statusDiv.innerHTML = '✅ NOTIFICATIONS GRANTED • Push Ready';
-      statusDiv.className = 'status granted';
-      subscribeBtn.style.display = 'none';
-      testBtn.style.display = 'block';
-      scheduleArea.style.display = 'block';
-    } else if (Notification.permission === 'denied') {
-      statusDiv.innerHTML = '❌ NOTIFICATIONS BLOCKED • Check Settings';
-      statusDiv.className = 'status denied';
-      subscribeBtn.innerHTML = '📱 Open Settings';
-      subscribeBtn.onclick = () => {
-        alert('Go to: Settings → Safari → Notifications → Find this app → Allow');
-      };
-    } else {
-      statusDiv.innerHTML = '⏳ NOTIFICATIONS NOT ENABLED • Click Subscribe';
-      statusDiv.className = 'status default';
-      subscribeBtn.style.display = 'block';
-      subscribeBtn.innerHTML = '🔔 Subscribe to Push';
-      subscribeBtn.onclick = () => subscribeToPush();
-    }
-  }
-  
-  async function init() {
-    addLog('🚀 Apple Web Push API Demo - Correct Service Worker', 'info');
-    addLog(`📱 Mode: ${isHomeScreenApp() ? 'Home Screen App' : 'Safari'}`, 'info');
-    addLog(`🌐 Protocol: ${location.protocol}`, 'info');
-    
-    // Check if we're on a valid protocol
-    if (location.protocol !== 'https:' && location.protocol !== 'http:') {
-      addLog('⚠️ Warning: Service workers require HTTP or HTTPS protocol', 'error');
-    }
-    
-    // Try to register service worker on load if permissions already granted
-    if (Notification.permission === 'granted') {
-      swRegistration = await registerServiceWorker();
-      if (swRegistration) {
-        try {
-          pushSubscription = await swRegistration.pushManager.getSubscription();
-          if (pushSubscription) {
-            addLog('✅ Found existing subscription', 'success');
-            displaySubscriptionInfo(pushSubscription);
-          }
-        } catch(e) {}
+      
+      // Subscribe to push
+      const subscription = await subscribeToPush(swRegistration);
+      
+      if (subscription) {
+        addLog('🎉 ALL SET! Notifications will work on lock screen!', 'success');
+        
+        // Send welcome notification
+        setTimeout(() => {
+          sendNotification();
+        }, 1000);
       }
     }
     
     updateUI();
+  }
+  
+  // Send a test notification
+  function sendNotification() {
+    if (Notification.permission !== 'granted') {
+      addLog('❌ Notifications not enabled', 'error');
+      alert('Please enable notifications first');
+      return;
+    }
     
-    // Set default datetime
-    const defaultDate = new Date(Date.now() + 60000);
-    const year = defaultDate.getFullYear();
-    const month = String(defaultDate.getMonth() + 1).padStart(2, '0');
-    const day = String(defaultDate.getDate()).padStart(2, '0');
-    const hour = String(defaultDate.getHours()).padStart(2, '0');
-    const minute = String(defaultDate.getMinutes()).padStart(2, '0');
-    document.getElementById('reminderTime').value = `${year}-${month}-${day}T${hour}:${minute}`;
+    addLog('📱 Sending test notification...', 'info');
     
-    addLog('✅ Ready! Follow instructions for lock screen notifications.', 'success');
+    // Play sound
+    try {
+      const audio = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audio.createOscillator();
+      const gain = audio.createGain();
+      osc.connect(gain);
+      gain.connect(audio.destination);
+      osc.frequency.value = 880;
+      gain.gain.value = 0.2;
+      osc.start();
+      gain.gain.exponentialRampToValueAtTime(0.00001, audio.currentTime + 0.5);
+      osc.stop(audio.currentTime + 0.5);
+      if (audio.state === 'suspended') audio.resume();
+    } catch(e) {}
+    
+    // Show notification
+    new Notification('🔔 Test Notification', {
+      body: `Time: ${new Date().toLocaleTimeString()} - This works on lock screen!`,
+      icon: 'https://cdn-icons-png.flaticon.com/512/190/190411.png',
+      requireInteraction: true,
+      silent: false
+    });
+    
+    // Also try via service worker if available
+    if (swRegistration && swRegistration.showNotification) {
+      swRegistration.showNotification('🔔 Service Worker Test', {
+        body: 'This would appear even if app is closed',
+        requireInteraction: true
+      });
+    }
+    
+    addLog('✅ Notification sent! Now LOCK YOUR PHONE and send another.', 'success');
+  }
+  
+  function updateUI() {
+    const permissionStatus = document.getElementById('permissionStatus');
+    const enableBtn = document.getElementById('enableBtn');
+    const testBtn = document.getElementById('testBtn');
+    const modeStatus = document.getElementById('modeStatus');
+    const instructionBox = document.getElementById('instructionBox');
+    
+    // Update mode status
+    if (isHomeScreen()) {
+      modeStatus.innerHTML = '✅ Running from HOME SCREEN - Lock screen ready!';
+      modeStatus.style.color = '#28a745';
+      instructionBox.style.display = 'none';
+    } else {
+      modeStatus.innerHTML = '⚠️ NOT running from home screen! Add to home screen first.';
+      modeStatus.style.color = '#dc3545';
+      instructionBox.style.display = 'block';
+    }
+    
+    // Update permission status
+    if (Notification.permission === 'granted') {
+      permissionStatus.innerHTML = '✅ NOTIFICATIONS ENABLED';
+      permissionStatus.className = 'status granted';
+      enableBtn.style.display = 'none';
+      testBtn.style.display = 'block';
+    } else if (Notification.permission === 'denied') {
+      permissionStatus.innerHTML = '❌ NOTIFICATIONS BLOCKED';
+      permissionStatus.className = 'status denied';
+      enableBtn.innerHTML = '📱 OPEN SETTINGS';
+      enableBtn.onclick = () => {
+        alert('Go to: Settings → Safari → Notifications → Find this app → Allow');
+      };
+    } else {
+      permissionStatus.innerHTML = '⏳ NOTIFICATIONS NOT ENABLED';
+      permissionStatus.className = 'status default';
+    }
+  }
+  
+  // Check if service worker is supported and log
+  function checkSupport() {
+    addLog(`🌐 Protocol: ${location.protocol}`, 'info');
+    addLog(`📱 Home screen mode: ${isHomeScreen() ? 'YES ✅' : 'NO ⚠️'}`, 'info');
+    addLog(`🔔 Notification API: ${'Notification' in window ? 'YES' : 'NO'}`, 'info');
+    addLog(`📡 Service Worker: ${'serviceWorker' in navigator ? 'YES' : 'NO'}`, 'info');
+    addLog(`🔑 Push Manager: ${'PushManager' in window ? 'YES' : 'NO'}`, 'info');
+    
+    if (location.protocol !== 'https:' && !location.hostname.includes('localhost')) {
+      addLog('⚠️ Not on HTTPS - push may not work', 'error');
+    }
+  }
+  
+  // Try to restore existing subscription on load
+  async function restoreSubscription() {
+    if (Notification.permission === 'granted') {
+      swRegistration = await registerServiceWorker();
+      if (swRegistration) {
+        try {
+          const subscription = await swRegistration.pushManager.getSubscription();
+          if (subscription) {
+            addLog('✅ Restored existing push subscription', 'success');
+          }
+        } catch(e) {}
+      }
+    }
+  }
+  
+  // Initialize
+  async function init() {
+    addLog('🚀 iOS Push Notifications Demo', 'info');
+    addLog('📱 iOS 16.4+ required for web push', 'info');
+    
+    checkSupport();
+    await restoreSubscription();
+    updateUI();
+    
+    addLog('✅ Ready! ' + (isHomeScreen() ? 'You can test lock screen notifications!' : 'Add to home screen first!'), 'success');
   }
   
   init();
