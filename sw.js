@@ -28,7 +28,7 @@ self.addEventListener('push', (event) => {
     self.registration.showNotification(data.title, {
       body: data.body,
       icon: data.icon,
-      badge: 'https://cdn-icons-png.flaticon.com/512/190/190411.png',
+      badge: 'https://cdn-icons-png.flaticon.com/512/13/13256.png',
       requireInteraction: true,
       data: { url: '/' }
     })
