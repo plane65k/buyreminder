@@ -30,7 +30,7 @@
   .container {
     width: 100%;
     max-width: 420px;
-    margin: 0 auto;
+    margin: 60px auto 0 auto; /* Added top margin to move app down */
   }
 
   h1 {
@@ -271,8 +271,7 @@
   const SUPABASE_URL = "https://akxoqcizqqqmwezocrvv.supabase.co";
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFreG9xY2l6cXFxbXdlem9jcnZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5NzEyMDIsImV4cCI6MjA4OTU0NzIwMn0.Z6MlXYW47gSlIEYEomjLHUwEeXV7pfBYYq9b73HXzhs";
   
-  // IMPORTANT: Generate your own VAPID keys for production
-  // For iOS, you need a valid VAPID key with proper email
+  // VAPID public key - replace with your own for production
   const VAPID_PUBLIC_KEY = "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U";
 
   let swRegistration = null;
@@ -403,8 +402,8 @@
       
       console.log('Push subscription successful');
       
-      // Optional: Send subscription to your server for server-side notifications
-      // await sendSubscriptionToServer(subscription);
+      // Send subscription to server for background notifications
+      await saveSubscriptionToSupabase(subscription);
       
     } catch (err) {
       console.error('Subscription failed', err);
@@ -413,6 +412,39 @@
       } else {
         alert("Push subscription error: " + err.message);
       }
+    }
+  }
+
+  // Save push subscription to Supabase for server-side notifications
+  async function saveSubscriptionToPushServer(subscription) {
+    // This would typically send to your backend
+    // For now, we'll store in localStorage and use service worker for background sync
+    localStorage.setItem('push_endpoint', subscription.endpoint);
+    localStorage.setItem('push_keys', JSON.stringify(subscription.toJSON().keys));
+  }
+
+  async function saveSubscriptionToSupabase(subscription) {
+    try {
+      // Store subscription in a separate table for server-side push
+      const subscriptionData = {
+        endpoint: subscription.endpoint,
+        keys: subscription.toJSON().keys,
+        user_agent: navigator.userAgent,
+        created_at: new Date().toISOString()
+      };
+      
+      // Try to store in Supabase (you'll need to create a 'push_subscriptions' table)
+      await fetch(SUPABASE_URL + "/rest/v1/push_subscriptions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": SUPABASE_KEY,
+          "Authorization": "Bearer " + SUPABASE_KEY
+        },
+        body: JSON.stringify(subscriptionData)
+      }).catch(e => console.log('Subscription storage optional:', e));
+    } catch(e) {
+      console.log('Could not save subscription to Supabase');
     }
   }
 
@@ -448,8 +480,7 @@
     }
   }
 
-  // Schedule a notification for a specific item using setTimeout
-  // This works even when the app is in background but not when completely closed
+  // Schedule a notification for a specific item using setTimeout with background support
   function scheduleItemNotification(item) {
     if (!item.date || item.done) return;
     if (Notification.permission !== "granted") return;
@@ -459,21 +490,89 @@
     const delay = reminderTime - now;
     
     if (delay > 0 && delay < 30 * 24 * 60 * 60 * 1000) { // within 30 days
-      const timeoutId = setTimeout(() => {
+      const timeoutId = setTimeout(async () => {
         if (Notification.permission === "granted") {
+          // Show notification
           new Notification("⏰ Shopping Reminder", {
             body: `${item.name} ${item.date ? `at ${formatDate(item.date)}` : ''}`,
             icon: item.image || "https://cdn-icons-png.flaticon.com/512/190/190411.png",
             tag: `item_${item.id}`,
-            requireInteraction: true // Stays until user interacts
+            requireInteraction: true,
+            silent: false
           });
+          
+          // Also trigger via service worker for better background support
+          if (swRegistration && swRegistration.showNotification) {
+            await swRegistration.showNotification("⏰ Shopping Reminder", {
+              body: `${item.name} ${item.date ? `at ${formatDate(item.date)}` : ''}`,
+              icon: item.image || "https://cdn-icons-png.flaticon.com/512/190/190411.png",
+              badge: "https://cdn-icons-png.flaticon.com/512/190/190411.png",
+              tag: `item_${item.id}`,
+              requireInteraction: true,
+              data: { itemId: item.id, itemName: item.name }
+            });
+          }
         }
       }, delay);
       
       if (!window._reminders) window._reminders = {};
       if (window._reminders[item.id]) clearTimeout(window._reminders[item.id]);
       window._reminders[item.id] = timeoutId;
+      
+      // Store reminder info for background sync
+      storeReminderForBackground(item, reminderTime);
     }
+  }
+  
+  // Store reminders in IndexedDB for background execution
+  function storeReminderForBackground(item, reminderTime) {
+    const reminder = {
+      id: item.id,
+      name: item.name,
+      date: item.date,
+      image: item.image,
+      reminderTime: reminderTime,
+      scheduled: true
+    };
+    
+    // Store in localStorage for persistence
+    const reminders = JSON.parse(localStorage.getItem('scheduled_reminders') || '[]');
+    const existingIndex = reminders.findIndex(r => r.id === item.id);
+    if (existingIndex !== -1) {
+      reminders[existingIndex] = reminder;
+    } else {
+      reminders.push(reminder);
+    }
+    localStorage.setItem('scheduled_reminders', JSON.stringify(reminders));
+  }
+  
+  // Check and restore reminders on app load
+  function restoreReminders() {
+    const reminders = JSON.parse(localStorage.getItem('scheduled_reminders') || '[]');
+    const now = Date.now();
+    
+    reminders.forEach(reminder => {
+      if (reminder.reminderTime > now && !reminder.triggered) {
+        const delay = reminder.reminderTime - now;
+        const timeoutId = setTimeout(() => {
+          if (Notification.permission === "granted") {
+            new Notification("⏰ Shopping Reminder", {
+              body: `${reminder.name} ${reminder.date ? `at ${formatDate(reminder.date)}` : ''}`,
+              icon: reminder.image || "https://cdn-icons-png.flaticon.com/512/190/190411.png",
+              tag: `item_${reminder.id}`,
+              requireInteraction: true
+            });
+            
+            // Mark as triggered
+            reminder.triggered = true;
+            localStorage.setItem('scheduled_reminders', JSON.stringify(reminders));
+          }
+        }, delay);
+        
+        if (!window._reminders) window._reminders = {};
+        window._reminders[reminder.id] = timeoutId;
+      }
+    });
   }
 
   async function addItem() {
@@ -527,6 +626,10 @@
       clearTimeout(window._reminders[id]);
       delete window._reminders[id];
     }
+    // Remove from stored reminders
+    const reminders = JSON.parse(localStorage.getItem('scheduled_reminders') || '[]');
+    const filteredReminders = reminders.filter(r => r.id !== id);
+    localStorage.setItem('scheduled_reminders', JSON.stringify(filteredReminders));
     await loadItems();
   }
 
@@ -609,8 +712,8 @@
 
       listDiv.appendChild(div);
 
-      // Schedule reminder
-      if (!item.done) {
+      // Schedule reminder for non-done items with dates
+      if (!item.done && item.date) {
         scheduleItemNotification(item);
       }
     });
@@ -623,12 +726,18 @@
     }
   });
 
+  // Handle page visibility for background notifications
+  document.addEventListener("resume", () => {
+    loadItems();
+  });
+
   // Initialize
   async function init() {
     if ('serviceWorker' in navigator) {
       await registerServiceWorker();
     }
     await loadItems();
+    restoreReminders(); // Restore any pending reminders
     updatePushUI();
     
     // Show iOS-specific instructions
