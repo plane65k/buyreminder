@@ -1,66 +1,60 @@
-// sw-test.js - Service Worker for Push Notification Testing
-const CACHE_NAME = 'push-test-v1';
-
+// sw-test.js - Service Worker for Background Notifications
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing...');
+  console.log('[SW] Installing');
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating...');
+  console.log('[SW] Activating');
   event.waitUntil(clients.claim());
 });
 
+// Handle push notifications from server
 self.addEventListener('push', (event) => {
-  console.log('[SW] Push received!', event);
+  console.log('[SW] Push received');
   
-  let title = '🛍️ Shopping Reminder';
-  let options = {
+  let data = {
+    title: 'Shopping Reminder',
     body: 'Time to check your shopping list!',
-    icon: 'https://cdn-icons-png.flaticon.com/512/190/190411.png',
-    badge: 'https://cdn-icons-png.flaticon.com/512/190/190411.png',
-    vibrate: [200, 100, 200],
-    requireInteraction: true,
-    data: {
-      url: '/'
-    }
+    icon: 'https://cdn-icons-png.flaticon.com/512/190/190411.png'
   };
   
   if (event.data) {
     try {
-      const data = event.data.json();
-      title = data.title || title;
-      options.body = data.body || options.body;
-      options.icon = data.icon || options.icon;
+      data = event.data.json();
     } catch(e) {
-      options.body = event.data.text();
+      data.body = event.data.text();
     }
   }
   
   event.waitUntil(
-    self.registration.showNotification(title, options)
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: data.icon,
+      badge: 'https://cdn-icons-png.flaticon.com/512/190/190411.png',
+      requireInteraction: true,
+      data: { url: '/' }
+    })
   );
 });
 
+// Handle notification clicks
 self.addEventListener('notificationclick', (event) => {
-  console.log('[SW] Notification clicked:', event);
   event.notification.close();
-  
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true })
-      .then(windowClients => {
-        for (let client of windowClients) {
-          if (client.url === '/' && 'focus' in client) {
-            return client.focus();
-          }
-        }
-        if (clients.openWindow) {
-          return clients.openWindow('/');
-        }
-      })
-  );
+  event.waitUntil(clients.openWindow('/'));
 });
 
-self.addEventListener('message', (event) => {
-  console.log('[SW] Message received:', event.data);
+// Periodic background sync (if supported)
+self.addEventListener('periodicsync', (event) => {
+  console.log('[SW] Periodic sync:', event.tag);
+  if (event.tag === 'check-reminders') {
+    event.waitUntil(checkReminders());
+  }
 });
+
+async function checkReminders() {
+  const clients = await self.clients.matchAll();
+  clients.forEach(client => {
+    client.postMessage({ type: 'CHECK_REMINDERS' });
+  });
+}
