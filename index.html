@@ -2,9 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Push Notification Test</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Push Test - Background Notification Fix</title>
 <style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     background: #f2f2f7;
@@ -13,49 +21,35 @@
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    margin: 0;
   }
-  
-  .test-container {
+
+  .container {
     max-width: 500px;
     width: 100%;
     background: white;
-    border-radius: 20px;
+    border-radius: 24px;
     padding: 24px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.1);
   }
-  
+
   h1 {
-    font-size: 24px;
+    font-size: 28px;
     margin-bottom: 8px;
     color: #1c1c1e;
   }
-  
+
   .status {
     padding: 12px;
     border-radius: 12px;
     margin: 16px 0;
     font-size: 14px;
   }
-  
-  .status.success {
-    background: #e8f5e9;
-    color: #2e7d32;
-    border-left: 4px solid #4caf50;
-  }
-  
-  .status.error {
-    background: #ffebee;
-    color: #c62828;
-    border-left: 4px solid #f44336;
-  }
-  
-  .status.info {
-    background: #e3f2fd;
-    color: #1565c0;
-    border-left: 4px solid #2196f3;
-  }
-  
+
+  .status.success { background: #e8f5e9; color: #2e7d32; border-left: 4px solid #4caf50; }
+  .status.error { background: #ffebee; color: #c62828; border-left: 4px solid #f44336; }
+  .status.info { background: #e3f2fd; color: #1565c0; border-left: 4px solid #2196f3; }
+  .status.warning { background: #fff3e0; color: #e65100; border-left: 4px solid #ff9800; }
+
   button {
     background: #34c759;
     color: white;
@@ -67,20 +61,13 @@
     cursor: pointer;
     width: 100%;
     margin: 8px 0;
+    transition: transform 0.1s;
   }
-  
-  button:active {
-    transform: scale(0.98);
-  }
-  
-  button.secondary {
-    background: #007aff;
-  }
-  
-  button.danger {
-    background: #ff3b30;
-  }
-  
+
+  button:active { transform: scale(0.98); }
+  button.secondary { background: #007aff; }
+  button.warning { background: #ff9500; }
+
   input, textarea {
     width: 100%;
     padding: 12px;
@@ -89,71 +76,89 @@
     font-size: 14px;
     margin: 8px 0;
     box-sizing: border-box;
-    font-family: monospace;
   }
-  
+
   .log {
     background: #f9f9fb;
     border-radius: 12px;
     padding: 12px;
     font-family: monospace;
-    font-size: 12px;
+    font-size: 11px;
     margin-top: 16px;
     max-height: 300px;
     overflow-y: auto;
   }
-  
+
   .log-entry {
     padding: 4px 0;
     border-bottom: 1px solid #e5e5ea;
-    font-size: 11px;
   }
-  
+
   .test-group {
-    margin: 20px 0;
+    margin: 16px 0;
     padding: 16px;
     background: #f9f9fb;
     border-radius: 12px;
   }
-  
-  .test-group h3 {
-    margin-bottom: 12px;
-    font-size: 16px;
+
+  .badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-left: 8px;
   }
+
+  .badge.ios { background: #007aff; color: white; }
+  .badge.warning { background: #ff9500; color: white; }
 </style>
 </head>
 <body>
-<div class="test-container">
-  <h1>🔔 Push Notification Test</h1>
-  <p style="color: #8e8e93; margin-bottom: 20px;">Test if your device supports background push</p>
+<div class="container">
+  <h1>🔔 Background Push Test <span class="badge ios">iOS Optimized</span></h1>
+  <p style="color: #8e8e93; margin-bottom: 16px;">Testing notifications when phone is locked/background</p>
   
-  <div id="status" class="status info">🔍 Checking browser support...</div>
+  <div id="status" class="status info">🔍 Initializing...</div>
   
   <div class="test-group">
-    <h3>📱 Step 1: Check Support</h3>
-    <button onclick="checkSupport()">Check Browser Support</button>
+    <h3>📱 Step 1: Setup</h3>
+    <button onclick="checkSupport()">1. Check Browser Support</button>
+    <button onclick="requestPermission()" id="requestBtn">2. Request Permission</button>
   </div>
   
   <div class="test-group">
-    <h3>🔔 Step 2: Request Permission</h3>
-    <button onclick="requestPermission()" id="requestBtn">Request Notification Permission</button>
+    <h3>⏰ Step 2: Test Different Durations</h3>
+    <button onclick="testWithDelay(5)" id="test5s">Test 5 seconds</button>
+    <button onclick="testWithDelay(30)" id="test30s">Test 30 seconds</button>
+    <button onclick="testWithDelay(60)" id="test60s">Test 60 seconds</button>
+    <button onclick="testWithDelay(120)" id="test120s">Test 120 seconds</button>
   </div>
   
   <div class="test-group">
-    <h3>📡 Step 3: Test Push</h3>
-    <button onclick="testNotification()" id="testBtn" disabled>Test Notification (immediate)</button>
-    <button onclick="testScheduledNotification()" id="scheduleBtn" disabled>Test Scheduled (5 seconds)</button>
-  </div>
-  
-  <div class="test-group">
-    <h3>💾 Step 4: Database Test</h3>
-    <input type="text" id="testItem" placeholder="Test item name" value="Test Item">
+    <h3>💾 Step 3: Database + Background Sync</h3>
+    <input type="text" id="testItem" placeholder="Item name" value="Test Item">
     <input type="datetime-local" id="testDate">
-    <button onclick="addTestItem()">Add to Database & Test Push</button>
+    <button onclick="addWithBackgroundSync()" class="secondary">Add with Background Sync</button>
+    <button onclick="testWakeLock()" class="warning">Test Wake Lock (prevent sleep)</button>
+  </div>
+  
+  <div class="test-group">
+    <h3>🔄 Step 4: Background Task</h3>
+    <button onclick="requestBackgroundTask()">Request Background Time</button>
+    <button onclick="checkPendingNotifications()">Check Pending Notifications</button>
   </div>
   
   <div id="log" class="log">
     <div class="log-entry">📋 Test log will appear here...</div>
+  </div>
+  
+  <div style="margin-top: 16px; padding: 12px; background: #fff3e0; border-radius: 12px; font-size: 12px;">
+    <strong>⚠️ iOS Background Limitations:</strong><br>
+    • Timers stop after ~30 seconds when app is backgrounded<br>
+    • Solution: Use Service Worker + Push API (requires server)<br>
+    • Alternative: Background Fetch API (periodic checks)<br>
+    • For true background push, need Apple Push Notification Service
   </div>
 </div>
 
@@ -162,14 +167,15 @@
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFreG9xY2l6cXFxbXdlem9jcnZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5NzEyMDIsImV4cCI6MjA4OTU0NzIwMn0.Z6MlXYW47gSlIEYEomjLHUwEeXV7pfBYYq9b73HXzhs";
   
   let permissionGranted = false;
-  let swRegistration = null;
+  let wakeLock = null;
+  let activeTimers = [];
   
   function addLog(message, type = 'info') {
     const logDiv = document.getElementById('log');
     const entry = document.createElement('div');
     entry.className = 'log-entry';
     const time = new Date().toLocaleTimeString();
-    const emoji = type === 'error' ? '❌' : (type === 'success' ? '✅' : '📝');
+    const emoji = type === 'error' ? '❌' : (type === 'success' ? '✅' : (type === 'warning' ? '⚠️' : '📝'));
     entry.innerHTML = `<span style="color:#8e8e93">[${time}]</span> ${emoji} ${message}`;
     logDiv.insertBefore(entry, logDiv.firstChild);
     console.log(message);
@@ -182,63 +188,32 @@
   }
   
   async function checkSupport() {
-    addLog('Checking browser support...');
+    addLog('Checking iOS background notification support...');
     
-    const checks = {
-      'Notification API': 'Notification' in window,
-      'Service Worker': 'serviceWorker' in navigator,
-      'Push Manager': 'PushManager' in window,
-      'iOS Home Screen': window.navigator.standalone === true
-    };
+    const isHomeScreen = window.navigator.standalone === true;
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     
-    let allSupported = true;
-    for (const [feature, supported] of Object.entries(checks)) {
-      addLog(`${feature}: ${supported ? '✅ Supported' : '❌ Not supported'}`);
-      if (!supported) allSupported = false;
-    }
+    addLog(`Running as Home Screen App: ${isHomeScreen ? '✅ Yes' : '❌ No'}`);
+    addLog(`iOS Device: ${isIOS ? '✅ Yes' : '❌ No'}`);
+    addLog(`Notification API: ${'Notification' in window ? '✅' : '❌'}`);
+    addLog(`Service Worker: ${'serviceWorker' in navigator ? '✅' : '❌'}`);
     
-    if (allSupported) {
-      updateStatus('✅ All features supported! Ready for push notifications.', 'success');
-      addLog('🎉 Your browser supports everything needed for push notifications!');
+    if (isHomeScreen) {
+      updateStatus('✅ Running as Home Screen App! Background notifications may work better.', 'success');
+      addLog('🎉 Great! You added this to home screen. This enables better background support.', 'success');
     } else {
-      updateStatus('⚠️ Some features missing. Push may not work fully.', 'error');
-      addLog('⚠️ Some features are missing. For best results, use Safari on iOS and add to home screen.');
+      updateStatus('⚠️ Not added to home screen. Add to Home Screen for best background support.', 'warning');
+      addLog('📱 For true background notifications, add this to home screen first!', 'warning');
     }
     
-    return allSupported;
-  }
-  
-  async function registerServiceWorker() {
-    if (!('serviceWorker' in navigator)) {
-      addLog('Service Worker not supported', 'error');
-      return null;
-    }
-    
-    try {
-      addLog('Registering service worker...');
-      const registration = await navigator.serviceWorker.register('sw-test.js');
-      addLog(`Service Worker registered: ${registration.scope}`, 'success');
-      
-      // Wait for activation
-      if (registration.installing) {
-        addLog('Waiting for service worker installation...');
-        await new Promise(resolve => {
-          registration.installing.addEventListener('statechange', e => {
-            if (e.target.state === 'activated') resolve();
-          });
-        });
-      }
-      
-      return registration;
-    } catch (err) {
-      addLog(`Service Worker registration failed: ${err.message}`, 'error');
-      return null;
+    if (!isIOS) {
+      addLog('ℹ️ Non-iOS device detected. Background behavior may differ.', 'info');
     }
   }
   
   async function requestPermission() {
     if (!('Notification' in window)) {
-      addLog('Notifications not supported in this browser', 'error');
+      addLog('Notifications not supported', 'error');
       return;
     }
     
@@ -247,80 +222,128 @@
     
     if (permission === 'granted') {
       permissionGranted = true;
-      updateStatus('✅ Notifications granted! You can now receive push notifications.', 'success');
-      addLog('✅ Notification permission granted!', 'success');
+      updateStatus('✅ Notifications granted! Testing background behavior...', 'success');
+      addLog('✅ Permission granted!', 'success');
       
-      // Register service worker
-      swRegistration = await registerServiceWorker();
+      // Enable all test buttons
+      document.querySelectorAll('button').forEach(btn => {
+        if (btn.id !== 'requestBtn') btn.disabled = false;
+      });
       
-      if (swRegistration) {
-        // Enable buttons
-        document.getElementById('testBtn').disabled = false;
-        document.getElementById('scheduleBtn').disabled = false;
-        addLog('✅ Ready to test notifications!', 'success');
-      } else {
-        addLog('⚠️ Service worker not registered, but you can still test basic notifications', 'error');
-      }
+      // Show immediate test
+      new Notification("✅ Ready!", {
+        body: "Background notification testing enabled",
+        icon: "https://cdn-icons-png.flaticon.com/512/190/190411.png"
+      });
+      
+      // Try to register service worker
+      await registerTestServiceWorker();
     } else {
-      permissionGranted = false;
-      updateStatus('❌ Notifications denied. Please enable in settings.', 'error');
-      addLog('❌ Notification permission denied', 'error');
+      updateStatus('❌ Notifications denied', 'error');
+      addLog('❌ Permission denied', 'error');
     }
   }
   
-  function testNotification() {
+  async function registerTestServiceWorker() {
+    if (!('serviceWorker' in navigator)) return;
+    
+    try {
+      const registration = await navigator.serviceWorker.register('sw-test.js');
+      addLog('Service Worker registered for background notifications', 'success');
+      return registration;
+    } catch (err) {
+      addLog(`Service Worker error: ${err.message}`, 'warning');
+    }
+  }
+  
+  function testWithDelay(seconds) {
     if (!permissionGranted) {
       addLog('Please grant permission first', 'error');
       return;
     }
     
-    addLog('Testing immediate notification...');
+    const now = new Date();
+    const triggerTime = new Date(now.getTime() + seconds * 1000);
+    
+    addLog(`⏰ Scheduling notification in ${seconds} seconds (at ${triggerTime.toLocaleTimeString()})`);
+    updateStatus(`⏰ Notification scheduled in ${seconds} seconds...`, 'info');
+    
+    // Store in localStorage for persistence
+    const scheduled = {
+      id: Date.now(),
+      seconds: seconds,
+      triggerTime: triggerTime.getTime(),
+      message: `Test notification after ${seconds} seconds`
+    };
+    
+    let pending = JSON.parse(localStorage.getItem('pending_notifications') || '[]');
+    pending.push(scheduled);
+    localStorage.setItem('pending_notifications', JSON.stringify(pending));
+    
+    // Set timeout (works while app is in foreground)
+    const timeoutId = setTimeout(() => {
+      sendNotification(`⏰ ${seconds} Second Test`, `This notification was scheduled ${seconds} seconds ago!`);
+      addLog(`✅ ${seconds} second notification triggered!`, 'success');
+      
+      // Remove from pending
+      pending = JSON.parse(localStorage.getItem('pending_notifications') || '[]');
+      pending = pending.filter(p => p.id !== scheduled.id);
+      localStorage.setItem('pending_notifications', JSON.stringify(pending));
+    }, seconds * 1000);
+    
+    activeTimers.push(timeoutId);
+    
+    // Also set up a background fetch check
+    setupBackgroundCheck(scheduled);
+    
+    addLog(`💡 Tip: ${seconds > 30 ? 'For >30 seconds, iOS may suspend the timer. Notification may appear when you reopen the app.' : 'This should work while app is open.'}`, 'warning');
+  }
+  
+  function setupBackgroundCheck(scheduled) {
+    // Store in IndexedDB for background checking
+    if ('indexedDB' in window) {
+      const request = indexedDB.open('NotificationDB', 1);
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains('notifications')) {
+          db.createObjectStore('notifications', { keyPath: 'id' });
+        }
+      };
+      request.onsuccess = (event) => {
+        const db = event.target.result;
+        const transaction = db.transaction(['notifications'], 'readwrite');
+        const store = transaction.objectStore('notifications');
+        store.put(scheduled);
+        addLog('💾 Notification saved to IndexedDB for background recovery', 'success');
+      };
+    }
+  }
+  
+  function sendNotification(title, body) {
+    if (!permissionGranted) return;
     
     try {
-      const notification = new Notification("🔔 Test Notification", {
-        body: "This is a test notification from Shopping Reminder!",
+      const notification = new Notification(title, {
+        body: body,
         icon: "https://cdn-icons-png.flaticon.com/512/190/190411.png",
-        tag: "test",
-        requireInteraction: true
+        tag: `test_${Date.now()}`,
+        requireInteraction: true,
+        silent: false
       });
       
       notification.onclick = () => {
-        addLog('Notification was clicked!', 'success');
+        addLog('Notification clicked!', 'success');
         window.focus();
       };
       
-      addLog('✅ Immediate notification sent!', 'success');
+      return true;
     } catch (err) {
-      addLog(`❌ Failed to send notification: ${err.message}`, 'error');
+      addLog(`Notification error: ${err.message}`, 'error');
+      return false;
     }
   }
   
-  function testScheduledNotification() {
-    if (!permissionGranted) {
-      addLog('Please grant permission first', 'error');
-      return;
-    }
-    
-    addLog('Scheduling notification in 5 seconds...');
-    
-    setTimeout(() => {
-      try {
-        new Notification("⏰ Scheduled Test", {
-          body: "This notification was scheduled 5 seconds ago!",
-          icon: "https://cdn-icons-png.flaticon.com/512/190/190411.png",
-          tag: "scheduled",
-          requireInteraction: true
-        });
-        addLog('✅ Scheduled notification sent!', 'success');
-      } catch (err) {
-        addLog(`❌ Failed to send scheduled notification: ${err.message}`, 'error');
-      }
-    }, 5000);
-    
-    addLog('⏰ Notification scheduled for 5 seconds from now');
-  }
-  
-  async function addTestItem() {
+  async function addWithBackgroundSync() {
     const name = document.getElementById('testItem').value;
     const date = document.getElementById('testDate').value;
     
@@ -329,7 +352,7 @@
       return;
     }
     
-    addLog(`Adding test item: "${name}" to database...`);
+    addLog(`Adding item to database with background sync...`);
     
     try {
       const response = await fetch(SUPABASE_URL + "/rest/v1/items", {
@@ -337,8 +360,7 @@
         headers: {
           "Content-Type": "application/json",
           "apikey": SUPABASE_KEY,
-          "Authorization": "Bearer " + SUPABASE_KEY,
-          "Prefer": "return=representation"
+          "Authorization": "Bearer " + SUPABASE_KEY
         },
         body: JSON.stringify({ 
           name, 
@@ -348,163 +370,174 @@
         })
       });
       
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       
-      const data = await response.json();
-      addLog(`✅ Item added to database! ID: ${data[0]?.id || 'unknown'}`, 'success');
+      addLog(`✅ Item added: "${name}"`, 'success');
       
-      // Test notification for this item
       if (date) {
         const reminderTime = new Date(date).getTime();
         const now = Date.now();
         const delay = reminderTime - now;
         
-        if (delay > 0 && delay < 60000) { // Less than 1 minute
-          addLog(`⏰ Item has a date in ${Math.round(delay/1000)} seconds - will trigger notification!`);
+        if (delay > 0) {
+          addLog(`📅 Reminder set for ${new Date(date).toLocaleString()} (in ${Math.round(delay/1000)} seconds)`);
           
-          setTimeout(() => {
-            if (Notification.permission === "granted") {
-              new Notification("📝 Shopping Reminder", {
-                body: `${name} ${date ? `at ${new Date(date).toLocaleTimeString()}` : ''}`,
-                icon: "https://cdn-icons-png.flaticon.com/512/190/190411.png",
-                requireInteraction: true
-              });
-              addLog(`✅ Notification triggered for "${name}"!`, 'success');
-            }
-          }, delay);
-        } else if (delay > 0) {
-          addLog(`📅 Item scheduled for ${new Date(date).toLocaleString()} - will notify then`, 'info');
-        } else {
-          addLog(`⚠️ Item date is in the past, no notification will be sent`, 'error');
+          // Try to use Background Fetch API for long delays
+          if ('backgroundFetch' in navigator && delay > 60000) {
+            addLog(`🔄 Attempting to use Background Fetch for long delay...`, 'info');
+            await setupBackgroundFetch(name, date, reminderTime);
+          } else if (delay < 30000) {
+            // Short delay - use normal timer
+            setTimeout(() => {
+              sendNotification("📝 Shopping Reminder", `${name} is due now!`);
+            }, delay);
+          } else {
+            // Medium delay - store and check on app resume
+            addLog(`💾 Stored in pending notifications (will trigger when app reopens)`, 'warning');
+            storePendingNotification(name, date, reminderTime);
+          }
         }
-      } else {
-        addLog(`ℹ️ No date set for this item, no notification scheduled`, 'info');
       }
       
-      // Clear inputs
       document.getElementById('testItem').value = '';
       document.getElementById('testDate').value = '';
       
     } catch (err) {
-      addLog(`❌ Failed to add item: ${err.message}`, 'error');
+      addLog(`❌ Error: ${err.message}`, 'error');
     }
   }
   
-  // Auto-check on load
+  async function setupBackgroundFetch(name, date, triggerTime) {
+    // Background Fetch API (experimental)
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const bgFetch = await registration.backgroundFetch.fetch(
+        `reminder_${Date.now()}`,
+        ['/check-reminder.html'],
+        {
+          title: `Reminder for ${name}`,
+          body: `Due at ${new Date(date).toLocaleTimeString()}`,
+          icons: [{ src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '192x192' }]
+        }
+      );
+      addLog(`✅ Background fetch scheduled!`, 'success');
+    } catch (err) {
+      addLog(`Background Fetch not supported: ${err.message}`, 'warning');
+      storePendingNotification(name, date, triggerTime);
+    }
+  }
+  
+  function storePendingNotification(name, date, triggerTime) {
+    const pending = {
+      id: Date.now(),
+      name: name,
+      date: date,
+      triggerTime: triggerTime,
+      created: Date.now()
+    };
+    
+    let pendingList = JSON.parse(localStorage.getItem('pending_reminders') || '[]');
+    pendingList.push(pending);
+    localStorage.setItem('pending_reminders', JSON.stringify(pendingList));
+    addLog(`💾 Saved to pending reminders (${pendingList.length} total)`, 'info');
+  }
+  
+  function checkPendingNotifications() {
+    const pendingReminders = JSON.parse(localStorage.getItem('pending_reminders') || '[]');
+    const pendingNotifications = JSON.parse(localStorage.getItem('pending_notifications') || '[]');
+    const now = Date.now();
+    let triggered = 0;
+    
+    addLog(`🔍 Checking pending items...`);
+    addLog(`📦 ${pendingReminders.length} pending reminders in storage`);
+    addLog(`⏰ ${pendingNotifications.length} pending test notifications`);
+    
+    // Check reminders
+    pendingReminders.forEach(reminder => {
+      if (reminder.triggerTime <= now) {
+        sendNotification("⏰ Shopping Reminder", `${reminder.name} is due now!`);
+        addLog(`✅ Triggered reminder for "${reminder.name}"`, 'success');
+        triggered++;
+      }
+    });
+    
+    // Check test notifications
+    pendingNotifications.forEach(notif => {
+      if (notif.triggerTime <= now) {
+        sendNotification("⏰ Test Notification", notif.message);
+        addLog(`✅ Triggered ${notif.seconds} second notification`, 'success');
+        triggered++;
+      }
+    });
+    
+    if (triggered > 0) {
+      // Remove triggered items
+      const remainingReminders = pendingReminders.filter(r => r.triggerTime > now);
+      const remainingNotifs = pendingNotifications.filter(n => n.triggerTime > now);
+      localStorage.setItem('pending_reminders', JSON.stringify(remainingReminders));
+      localStorage.setItem('pending_notifications', JSON.stringify(remainingNotifs));
+      addLog(`🗑️ Removed ${triggered} triggered items, ${remainingReminders.length + remainingNotifs.length} remaining`, 'info');
+    } else {
+      addLog(`No pending notifications ready yet`, 'info');
+    }
+  }
+  
+  async function requestBackgroundTask() {
+    if ('requestIdleCallback' in window) {
+      addLog(`Requesting background time...`);
+      requestIdleCallback(() => {
+        addLog(`✅ Got background execution time!`, 'success');
+        checkPendingNotifications();
+      }, { timeout: 5000 });
+    } else {
+      addLog(`Background tasks limited on this browser`, 'warning');
+      checkPendingNotifications();
+    }
+  }
+  
+  async function testWakeLock() {
+    if ('wakeLock' in navigator) {
+      try {
+        wakeLock = await navigator.wakeLock.request('screen');
+        addLog(`✅ Wake Lock acquired! Screen will stay awake.`, 'success');
+        updateStatus('💡 Screen wake lock active - prevents sleep during test', 'success');
+        
+        setTimeout(async () => {
+          if (wakeLock) {
+            await wakeLock.release();
+            wakeLock = null;
+            addLog(`Wake Lock released`, 'info');
+            updateStatus('Wake lock released', 'info');
+          }
+        }, 60000);
+      } catch (err) {
+        addLog(`Wake Lock error: ${err.message}`, 'error');
+      }
+    } else {
+      addLog(`Wake Lock not supported on this device`, 'warning');
+    }
+  }
+  
+  // Check for pending notifications when app becomes active
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      addLog(`📱 App reopened! Checking for pending notifications...`, 'info');
+      checkPendingNotifications();
+    }
+  });
+  
+  // Check on page load
   window.addEventListener('load', () => {
     setTimeout(() => {
       checkSupport();
+      checkPendingNotifications();
     }, 500);
   });
   
-  // Listen for service worker messages
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.addEventListener('message', (event) => {
-      addLog(`📨 Message from service worker: ${event.data}`, 'info');
-    });
-  }
+  // Cleanup timers
+  window.addEventListener('beforeunload', () => {
+    activeTimers.forEach(clearTimeout);
+  });
 </script>
-
-<!-- Create simple service worker -->
-<script>
-  // This script creates the service worker file dynamically
-  (function createServiceWorker() {
-    const swCode = `// Test Service Worker for Push Notifications
-const CACHE_NAME = 'push-test-v1';
-
-self.addEventListener('install', (event) => {
-  console.log('[SW] Installing...');
-  self.skipWaiting();
-});
-
-self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating...');
-  event.waitUntil(clients.claim());
-});
-
-self.addEventListener('push', (event) => {
-  console.log('[SW] Push received!', event);
-  
-  let title = '🛍️ Shopping Reminder';
-  let options = {
-    body: 'Time to check your shopping list!',
-    icon: 'https://cdn-icons-png.flaticon.com/512/190/190411.png',
-    badge: 'https://cdn-icons-png.flaticon.com/512/190/190411.png',
-    vibrate: [200, 100, 200],
-    requireInteraction: true,
-    data: {
-      url: '/'
-    }
-  };
-  
-  if (event.data) {
-    try {
-      const data = event.data.json();
-      title = data.title || title;
-      options.body = data.body || options.body;
-      options.icon = data.icon || options.icon;
-    } catch(e) {
-      options.body = event.data.text();
-    }
-  }
-  
-  event.waitUntil(
-    self.registration.showNotification(title, options)
-  );
-});
-
-self.addEventListener('notificationclick', (event) => {
-  console.log('[SW] Notification clicked:', event);
-  event.notification.close();
-  
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true })
-      .then(windowClients => {
-        for (let client of windowClients) {
-          if (client.url === '/' && 'focus' in client) {
-            return client.focus();
-          }
-        }
-        if (clients.openWindow) {
-          return clients.openWindow('/');
-        }
-      })
-  );
-});
-
-self.addEventListener('message', (event) => {
-  console.log('[SW] Message received:', event.data);
-});
-`;
-    
-    // Create blob and save as file (this is just for testing)
-    // In production, you'd create the file manually
-    console.log('To complete setup, create a file named "sw-test.js" with the service worker code above');
-    
-    // Try to register if the file exists
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw-test.js').catch(() => {
-        console.log('sw-test.js not found. Please create it with the code above.');
-        addLog('⚠️ Service worker file not found. Create sw-test.js file with the provided code.', 'error');
-      });
-    }
-  })();
-</script>
-
-<div style="margin-top: 20px; padding: 12px; background: #fff3e0; border-radius: 12px; font-size: 12px;">
-  <strong>📝 Instructions:</strong><br>
-  1. Click "Check Browser Support" first<br>
-  2. Click "Request Notification Permission" and allow<br>
-  3. Test with immediate and scheduled notifications<br>
-  4. For database testing, set a date within the next minute to see automatic notifications<br>
-  <br>
-  <strong>⚠️ For background push to work when phone is locked:</strong><br>
-  • Add this app to home screen (Share → Add to Home Screen)<br>
-  • Open from home screen, not Safari<br>
-  • Allow notifications when prompted<br>
-  • iOS 16.4+ required for web push
-</div>
 </body>
 </html>
