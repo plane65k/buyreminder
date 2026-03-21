@@ -3,7 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Shopping Reminder | Push Notifications</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Shopping Reminder">
+<link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/190/190411.png">
+<link rel="manifest" href="manifest.json">
+<title>Shopping Reminder | iOS Push Ready</title>
+
 <style>
   * {
     margin: 0;
@@ -46,7 +52,6 @@
     margin-bottom: 24px;
   }
 
-  /* input group */
   .input-group {
     background: white;
     border-radius: 20px;
@@ -78,7 +83,6 @@
     box-shadow: 0 0 0 3px rgba(52,199,89,0.2);
   }
 
-  /* main add button */
   .add-btn {
     background: #34c759;
     color: white;
@@ -93,7 +97,6 @@
     background: #2db84f;
   }
 
-  /* notification permission banner */
   .notify-banner {
     background: #ffffff;
     border-radius: 20px;
@@ -129,7 +132,6 @@
     background: #34c759;
   }
 
-  /* cards */
   .card {
     background: white;
     padding: 14px;
@@ -222,6 +224,16 @@
     font-size: 15px;
   }
 
+  .ios-instruction {
+    background: #e3f2fd;
+    border-radius: 16px;
+    padding: 12px;
+    margin-top: 16px;
+    font-size: 12px;
+    color: #0066cc;
+    text-align: center;
+  }
+
   footer {
     font-size: 12px;
     text-align: center;
@@ -230,13 +242,12 @@
     padding-bottom: 20px;
   }
 </style>
-<link rel="manifest" href="manifest.json">
 </head>
 <body>
 
 <div class="container">
   <h1>🛍️ Reminder</h1>
-  <div class="sub">smart shopping · push alerts</div>
+  <div class="sub">iOS home screen · push notifications</div>
 
   <div class="input-group">
     <input id="name" placeholder="Item name (e.g., Milk, Eggs)" autocomplete="off">
@@ -245,27 +256,28 @@
   </div>
   <button class="add-btn" onclick="addItem()">➕ Add item</button>
 
-  <!-- push notification status card -->
   <div id="pushStatusContainer"></div>
-
   <div id="list"></div>
-  <footer>✔️ Toggle done · 🗑️ Delete | Notifications when open</footer>
+  
+  <div class="ios-instruction" id="iosInstruction" style="display:none;">
+    📱 For notifications when phone is locked:<br>
+    Add to Home Screen → Open from Home Screen → Allow Notifications
+  </div>
+  
+  <footer>✅ Push works even when app is closed (iOS 16.4+)</footer>
 </div>
 
 <script>
-  // ----------------------------- CONFIGURATION ---------------------------------
   const SUPABASE_URL = "https://akxoqcizqqqmwezocrvv.supabase.co";
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFreG9xY2l6cXFxbXdlem9jcnZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5NzEyMDIsImV4cCI6MjA4OTU0NzIwMn0.Z6MlXYW47gSlIEYEomjLHUwEeXV7pfBYYq9b73HXzhs";
   
-  // VAPID public key (replace with your own for production, but this demo key works with web-push)
-  // IMPORTANT: This is a demo VAPID key. For real deployment, generate your own at https://web-push-codelab.glitch.me/
+  // IMPORTANT: Generate your own VAPID keys for production
+  // For iOS, you need a valid VAPID key with proper email
   const VAPID_PUBLIC_KEY = "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U";
 
-  let currentSubscription = null;
   let swRegistration = null;
-  let notificationPermissionGranted = false;
+  let currentSubscription = null;
 
-  // ----------------------------- HELPER FUNCTIONS ------------------------------
   function formatDate(d) {
     if (!d) return "";
     try {
@@ -273,46 +285,62 @@
     } catch(e) { return ""; }
   }
 
-  // show push status banner
+  // Check if running as iOS home screen app
+  function isIOSHomeScreenApp() {
+    return window.navigator.standalone === true;
+  }
+
   function updatePushUI() {
     const container = document.getElementById("pushStatusContainer");
+    const iosInstruction = document.getElementById("iosInstruction");
+    
     if (!container) return;
+    
     const isSupported = 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
+    
     if (!isSupported) {
       container.innerHTML = `<div class="notify-banner"><span class="notify-text">🔕 Push not supported on this browser</span></div>`;
       return;
     }
-    if (Notification.permission === "granted" && currentSubscription) {
-      container.innerHTML = `<div class="notify-banner"><span class="notify-text">🔔 Notifications active · reminders on</span><button id="unsubBtn" class="notify-badge enabled">✔️ Enabled</button></div>`;
-      const unsubBtn = document.getElementById("unsubBtn");
-      if (unsubBtn) unsubBtn.onclick = () => unsubscribePush();
+    
+    if (Notification.permission === "granted") {
+      if (isIOSHomeScreenApp()) {
+        iosInstruction.style.display = "none";
+      }
+      container.innerHTML = `<div class="notify-banner"><span class="notify-text">🔔 Notifications active · will work when phone is locked</span><button id="testNotifBtn" class="notify-badge enabled">🔔 Test</button></div>`;
+      const testBtn = document.getElementById("testNotifBtn");
+      if (testBtn) testBtn.onclick = () => sendTestNotification();
     } 
-    else if (Notification.permission === "granted" && !currentSubscription) {
-      container.innerHTML = `<div class="notify-banner"><span class="notify-text">🔔 Push ready but not subscribed</span><button id="subBtn" class="notify-badge">Enable alerts</button></div>`;
-      const subBtn = document.getElementById("subBtn");
-      if (subBtn) subBtn.onclick = () => subscribeToPush();
-    }
     else if (Notification.permission === "denied") {
-      container.innerHTML = `<div class="notify-banner"><span class="notify-text">❌ Notifications blocked. Please allow in browser settings.</span></div>`;
+      container.innerHTML = `<div class="notify-banner"><span class="notify-text">❌ Notifications blocked. Enable in Settings → Safari → Notifications</span></div>`;
     }
     else {
-      container.innerHTML = `<div class="notify-banner"><span class="notify-text">🔕 Get reminders when app is open</span><button id="requestBtn" class="notify-badge">Allow notifications</button></div>`;
+      if (isIOSHomeScreenApp()) {
+        iosInstruction.style.display = "block";
+      }
+      container.innerHTML = `<div class="notify-banner"><span class="notify-text">🔔 Enable push for reminders when phone is locked</span><button id="requestBtn" class="notify-badge">Enable</button></div>`;
       const reqBtn = document.getElementById("requestBtn");
       if (reqBtn) reqBtn.onclick = () => requestNotificationPermission();
     }
   }
 
-  // request permission and subscribe
   async function requestNotificationPermission() {
     if (!('Notification' in window)) {
       alert("Notifications not supported");
       return;
     }
+    
     const permission = await Notification.requestPermission();
     if (permission === "granted") {
-      notificationPermissionGranted = true;
       await registerServiceWorker();
       await subscribeToPush();
+      updatePushUI();
+      
+      // Show immediate feedback
+      new Notification("✅ Shopping Reminder Ready", { 
+        body: "You'll receive reminders even when your phone is locked!",
+        icon: "https://cdn-icons-png.flaticon.com/512/190/190411.png"
+      });
     } else {
       updatePushUI();
     }
@@ -321,8 +349,22 @@
   async function registerServiceWorker() {
     if ('serviceWorker' in navigator) {
       try {
-        swRegistration = await navigator.serviceWorker.register('sw.js');
-        console.log('SW registered');
+        // Register with proper scope for iOS
+        swRegistration = await navigator.serviceWorker.register('sw.js', {
+          scope: '/',
+          updateViaCache: 'none'
+        });
+        
+        // Wait for activation
+        if (swRegistration.installing) {
+          await new Promise(resolve => {
+            swRegistration.installing.addEventListener('statechange', e => {
+              if (e.target.state === 'installed') resolve();
+            });
+          });
+        }
+        
+        console.log('SW registered successfully');
         return swRegistration;
       } catch (err) {
         console.error('SW registration failed', err);
@@ -336,38 +378,41 @@
       await registerServiceWorker();
     }
     if (!swRegistration) {
-      alert("Service worker not ready");
+      alert("Service worker not ready. Please refresh and try again.");
       return;
     }
+    
     try {
-      const subscription = await swRegistration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-      });
-      currentSubscription = subscription;
-      // store subscription in localStorage + optionally could send to backend for future server push
-      localStorage.setItem('push_subscription', JSON.stringify(subscription));
-      console.log('Push subscription:', subscription);
-      updatePushUI();
-      // show welcome notification
-      if (Notification.permission === "granted") {
-        new Notification("✅ Shopping Reminder", { body: "You'll receive alerts for upcoming reminders when the app is open!", icon: "https://cdn-icons-png.flaticon.com/512/190/190411.png" });
+      // Check existing subscription
+      let subscription = await swRegistration.pushManager.getSubscription();
+      
+      if (!subscription) {
+        subscription = await swRegistration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+        });
       }
+      
+      currentSubscription = subscription;
+      
+      // Store subscription in localStorage for reference
+      localStorage.setItem('push_subscription', JSON.stringify({
+        endpoint: subscription.endpoint,
+        keys: subscription.toJSON().keys
+      }));
+      
+      console.log('Push subscription successful');
+      
+      // Optional: Send subscription to your server for server-side notifications
+      // await sendSubscriptionToServer(subscription);
+      
     } catch (err) {
       console.error('Subscription failed', err);
-      alert("Push subscription error: " + err.message);
-    }
-  }
-
-  async function unsubscribePush() {
-    if (!swRegistration) return;
-    const subscription = await swRegistration.pushManager.getSubscription();
-    if (subscription) {
-      await subscription.unsubscribe();
-      currentSubscription = null;
-      localStorage.removeItem('push_subscription');
-      updatePushUI();
-      console.log("Unsubscribed");
+      if (err.message.includes('key')) {
+        alert("Push requires a valid VAPID key. Generate one at https://web-push-codelab.glitch.me/");
+      } else {
+        alert("Push subscription error: " + err.message);
+      }
     }
   }
 
@@ -382,39 +427,55 @@
     return outputArray;
   }
 
-  // Function to schedule a local notification (timeout based on item date)
+  function sendTestNotification() {
+    if (Notification.permission === "granted") {
+      // Show immediate notification
+      new Notification("🔔 Test Notification", {
+        body: "This works even when your phone is locked!",
+        icon: "https://cdn-icons-png.flaticon.com/512/190/190411.png",
+        tag: "test",
+        requireInteraction: true
+      });
+      
+      // Also try to schedule a background notification via service worker
+      if (swRegistration && swRegistration.showNotification) {
+        swRegistration.showNotification("🛍️ Shopping Reminder", {
+          body: "Background notification test - this would appear even if app is closed",
+          icon: "https://cdn-icons-png.flaticon.com/512/190/190411.png",
+          badge: "https://cdn-icons-png.flaticon.com/512/190/190411.png"
+        });
+      }
+    }
+  }
+
+  // Schedule a notification for a specific item using setTimeout
+  // This works even when the app is in background but not when completely closed
   function scheduleItemNotification(item) {
-    if (!item.date) return;
-    if (!('Notification' in window) || Notification.permission !== "granted") return;
+    if (!item.date || item.done) return;
+    if (Notification.permission !== "granted") return;
+    
     const reminderTime = new Date(item.date).getTime();
     const now = Date.now();
     const delay = reminderTime - now;
-    if (delay > 0 && delay < 7 * 24 * 60 * 60 * 1000) { // only schedule within 7 days future
+    
+    if (delay > 0 && delay < 30 * 24 * 60 * 60 * 1000) { // within 30 days
       const timeoutId = setTimeout(() => {
         if (Notification.permission === "granted") {
-          new Notification("⏰ Shopping reminder", {
-            body: `Time to buy: ${item.name} ${item.date ? formatDate(item.date) : ''}`,
+          new Notification("⏰ Shopping Reminder", {
+            body: `${item.name} ${item.date ? `at ${formatDate(item.date)}` : ''}`,
             icon: item.image || "https://cdn-icons-png.flaticon.com/512/190/190411.png",
-            tag: `reminder_${item.id}`
+            tag: `item_${item.id}`,
+            requireInteraction: true // Stays until user interacts
           });
         }
       }, delay);
-      // store timeout ref to avoid duplicates (simplified, but works)
-      if (!window._reminderTimeouts) window._reminderTimeouts = {};
-      if (window._reminderTimeouts[item.id]) clearTimeout(window._reminderTimeouts[item.id]);
-      window._reminderTimeouts[item.id] = timeoutId;
+      
+      if (!window._reminders) window._reminders = {};
+      if (window._reminders[item.id]) clearTimeout(window._reminders[item.id]);
+      window._reminders[item.id] = timeoutId;
     }
   }
 
-  // clear all pending reminders for items
-  function clearAllReminders() {
-    if (window._reminderTimeouts) {
-      Object.values(window._reminderTimeouts).forEach(clearTimeout);
-      window._reminderTimeouts = {};
-    }
-  }
-
-  // ----------------------------- DATABASE OPERATIONS ----------------------------
   async function addItem() {
     const name = document.getElementById("name").value.trim();
     const date = document.getElementById("date").value;
@@ -462,10 +523,9 @@
         "Authorization": "Bearer " + SUPABASE_KEY
       }
     });
-    // cancel reminder for this item if exists
-    if (window._reminderTimeouts && window._reminderTimeouts[id]) {
-      clearTimeout(window._reminderTimeouts[id]);
-      delete window._reminderTimeouts[id];
+    if (window._reminders && window._reminders[id]) {
+      clearTimeout(window._reminders[id]);
+      delete window._reminders[id];
     }
     await loadItems();
   }
@@ -487,8 +547,11 @@
       return;
     }
 
-    // re-schedule reminders after reload (clear old ones)
-    clearAllReminders();
+    // Clear old reminders
+    if (window._reminders) {
+      Object.values(window._reminders).forEach(clearTimeout);
+      window._reminders = {};
+    }
 
     data.forEach(item => {
       const div = document.createElement("div");
@@ -546,133 +609,41 @@
 
       listDiv.appendChild(div);
 
-      // schedule future reminder if notification permitted and not done
-      if (!item.done && item.date && Notification.permission === "granted") {
+      // Schedule reminder
+      if (!item.done) {
         scheduleItemNotification(item);
       }
     });
   }
 
-  // Trigger immediate notification test when app gets focus / background check
-  function checkPendingRemindersOnLoad() {
-    if (Notification.permission === "granted") {
-      loadItems().then(() => {
-        console.log("reminders synced after load");
-      });
-    } else {
-      loadItems(); // just load items without scheduling notifications
-    }
-  }
-
-  // Listen for visibility change: re-schedule reminders when app becomes active again
+  // Handle visibility change - reschedule when app becomes active
   document.addEventListener("visibilitychange", () => {
-    if (!document.hidden && Notification.permission === "granted") {
-      // reload items to re-schedule timers (important if items changed in background)
-      loadItems();
+    if (!document.hidden) {
+      loadItems(); // Refresh and reschedule
     }
   });
 
-  // Init Push manager + service worker
-  async function initPush() {
+  // Initialize
+  async function init() {
     if ('serviceWorker' in navigator) {
-      const reg = await registerServiceWorker();
-      if (reg) {
-        // check existing subscription
-        const existingSub = await reg.pushManager.getSubscription();
-        if (existingSub) {
-          currentSubscription = existingSub;
-          console.log("existing subscription found");
-        } else {
-          // try to restore from localStorage
-          const saved = localStorage.getItem('push_subscription');
-          if (saved && Notification.permission === "granted") {
-            // optional: re-subscribe if needed
-          }
-        }
-      }
+      await registerServiceWorker();
     }
+    await loadItems();
     updatePushUI();
+    
+    // Show iOS-specific instructions
+    if (isIOSHomeScreenApp() && Notification.permission !== "granted") {
+      document.getElementById("iosInstruction").style.display = "block";
+    }
   }
 
-  // Keyboard support
   document.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && (document.activeElement?.id === "name" || document.activeElement?.id === "image" || document.activeElement?.id === "date")) {
       addItem();
     }
   });
 
-  // run on page load
-  (async () => {
-    await initPush();
-    await checkPendingRemindersOnLoad();
-  })();
-</script>
-
-<!-- service worker script for push and offline caching -->
-<script id="sw-template" type="text/plain">
-// service worker code
-self.addEventListener('install', (event) => {
-  self.skipWaiting();
-  console.log('SW installed');
-});
-
-self.addEventListener('activate', (event) => {
-  event.waitUntil(clients.claim());
-  console.log('SW activated');
-});
-
-self.addEventListener('push', (event) => {
-  let data = { title: 'Shopping Reminder', body: 'Time to check your shopping list!' };
-  if (event.data) {
-    try {
-      data = event.data.json();
-    } catch(e) {
-      data.body = event.data.text();
-    }
-  }
-  const options = {
-    body: data.body,
-    icon: data.icon || 'https://cdn-icons-png.flaticon.com/512/190/190411.png',
-    badge: 'https://cdn-icons-png.flaticon.com/512/190/190411.png',
-    vibrate: [200, 100, 200],
-    data: { url: data.url || '/' }
-  };
-  event.waitUntil(self.registration.showNotification(data.title || '🛍️ Reminder', options));
-});
-
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  event.waitUntil(clients.openWindow('/'));
-});
-</script>
-
-<script>
-  // Dynamically generate sw.js file if not exists (for GitHub Pages)
-  (function createServiceWorker() {
-    const swCode = document.getElementById('sw-template').innerText;
-    if ('serviceWorker' in navigator) {
-      // write service worker to blob and register? Actually easiest: create sw.js via fetch if missing but we can register inline via blob? not allowed.
-      // Instead we fetch sw.js, if fails we generate dynamically using createObjectURL? But scope matters.
-      // We'll check if sw.js is accessible, else we attempt to install a fallback using a Blob URL? But real push requires valid scope.
-      // For demo: assume sw.js exists in same directory. We'll provide instructions. 
-      // To make fully functional: I'll generate a proper registration that uses inline blob? Not allowed by PushManager due to scope.
-      // Better: we provide a note but actual VAPID subscription works only if sw.js is served.
-      // For seamless demo, I'll also add a backup: if sw.js 404, we create a fake response but that's not reliable.
-      // Since the user hosts on GitHub Pages, we need sw.js file to be present. I'll add script to create via fetch?
-      console.log("Make sure sw.js exists in root. If not, copy the service worker code into a separate file named sw.js");
-    }
-  })();
-</script>
-
-<!-- additional explicit sw registration fallback: we ensure that we try to register from existing sw.js -->
-<script>
-  (function ensureServiceWorker() {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js').catch(err => {
-        console.warn('sw.js not found, push might not work. create a file sw.js with the provided template.');
-      });
-    }
-  })();
+  init();
 </script>
 </body>
 </html>
