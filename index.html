@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Push Demo">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%2334c759'/%3E%3Ctext x='50' y='67' font-size='50' text-anchor='middle' fill='white'%3E🔔%3C/text%3E%3C/svg%3E">
-<title>Apple Web Push API - Official Implementation</title>
+<title>Apple Web Push API - Correct Service Worker</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -123,6 +123,13 @@
     margin-top: 0;
     flex: 1;
   }
+  .sw-status {
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 8px;
+    display: inline-block;
+    margin-left: 8px;
+  }
 </style>
 </head>
 <body>
@@ -136,6 +143,7 @@
   <div class="status-section">
     <div class="status" id="permissionStatus">⏳ Checking permission...</div>
     <div id="webappStatus" style="font-size:12px; text-align:center; margin-top:8px;"></div>
+    <div id="swStatus" style="font-size:11px; text-align:center; margin-top:5px;"></div>
   </div>
   
   <button class="btn-primary" id="subscribeBtn" onclick="subscribeToPush()">🔔 Subscribe to Push</button>
@@ -172,56 +180,37 @@
 
 <script>
   // VAPID Public Key - Required for Apple Web Push
-  // This is a valid testing key from web-push-codelab
   const VAPID_PUBLIC_KEY = "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U";
   
   let swRegistration = null;
   let pushSubscription = null;
   let activeTimers = [];
   
-  function addLog(message, type = 'info') {
-    const logDiv = document.getElementById('log');
-    const time = new Date().toLocaleTimeString();
-    const colors = { success: '#34c759', error: '#ff3b30', info: '#007aff' };
-    const color = colors[type] || colors.info;
-    logDiv.innerHTML += `<div style="color: ${color};">[${time}] ${message}</div>`;
-    logDiv.scrollTop = logDiv.scrollHeight;
-    console.log(message);
-  }
-  
-  // Check if running from home screen
-  function isHomeScreenApp() {
-    return window.navigator.standalone === true;
-  }
-  
-  // Register Service Worker (required for Push API)
-  async function registerServiceWorker() {
-    if (!('serviceWorker' in navigator)) {
-      addLog('❌ Service Worker not supported', 'error');
-      return null;
-    }
-    
-    // Service Worker code - handles push events
-    const swCode = `
+  // Create a proper service worker file URL using a data URL with the correct protocol
+  // Since we're serving from HTTP/HTTPS, we can use a blob URL that points to our script
+  // The key is that the service worker script must be served from the same origin with HTTPS/HTTP
+  function createServiceWorkerScript() {
+    return `
+      // Service Worker for Push Notifications
+      const VAPID_PUBLIC_KEY = "${VAPID_PUBLIC_KEY}";
+      
       self.addEventListener('install', (event) => {
+        console.log('[SW] Installing...');
         self.skipWaiting();
-        console.log('[SW] Installed');
       });
       
       self.addEventListener('activate', (event) => {
+        console.log('[SW] Activating...');
         event.waitUntil(clients.claim());
-        console.log('[SW] Activated');
       });
       
-      // Handle incoming push messages
       self.addEventListener('push', (event) => {
-        console.log('[SW] Push event received', event);
+        console.log('[SW] Push received', event);
         
         let notificationTitle = '🔔 Push Notification';
         let notificationBody = 'You have a new notification!';
         let notificationIcon = '/apple-touch-icon.png';
         
-        // Parse push data if available
         if (event.data) {
           try {
             const data = event.data.json();
@@ -233,63 +222,145 @@
           }
         }
         
-        // Show notification (required for iOS)
+        const options = {
+          body: notificationBody,
+          icon: notificationIcon,
+          badge: notificationIcon,
+          vibrate: [200, 100, 200],
+          tag: 'push-notification',
+          requireInteraction: true,
+          silent: false,
+          data: {
+            url: self.location.origin,
+            timestamp: Date.now()
+          }
+        };
+        
         event.waitUntil(
-          self.registration.showNotification(notificationTitle, {
-            body: notificationBody,
-            icon: notificationIcon,
-            badge: notificationIcon,
-            vibrate: [200, 100, 200],
-            tag: 'push-notification',
-            requireInteraction: true,
-            silent: false
-          })
+          self.registration.showNotification(notificationTitle, options)
         );
       });
       
-      // Handle notification click
       self.addEventListener('notificationclick', (event) => {
+        console.log('[SW] Notification clicked', event);
         event.notification.close();
+        
         event.waitUntil(
-          clients.openWindow('/')
+          clients.matchAll({ type: 'window', includeUncontrolled: true })
+            .then(windowClients => {
+              for (let client of windowClients) {
+                if (client.url === '/' && 'focus' in client) {
+                  return client.focus();
+                }
+              }
+              if (clients.openWindow) {
+                return clients.openWindow('/');
+              }
+            })
         );
       });
       
-      // Handle subscription change (important for iOS)
       self.addEventListener('pushsubscriptionchange', (event) => {
-        console.log('[SW] Push subscription changed', event);
-        // Resubscribe
+        console.log('[SW] Subscription changed', event);
+        // Resubscribe with same VAPID key
         event.waitUntil(
           self.registration.pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey: new Uint8Array([/* VAPID key */])
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
           }).then(newSubscription => {
-            // Send new subscription to server
             console.log('New subscription:', newSubscription);
+            // Send to server
+            return fetch('/api/subscribe', {
+              method: 'POST',
+              body: JSON.stringify(newSubscription),
+              headers: { 'Content-Type': 'application/json' }
+            }).catch(() => {});
           })
         );
       });
+      
+      function urlBase64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding).replace(/\\-/g, '+').replace(/_/g, '/');
+        const rawData = self.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+          outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+      }
     `;
+  }
+  
+  function addLog(message, type = 'info') {
+    const logDiv = document.getElementById('log');
+    const time = new Date().toLocaleTimeString();
+    const colors = { success: '#34c759', error: '#ff3b30', info: '#007aff' };
+    const color = colors[type] || colors.info;
+    logDiv.innerHTML += `<div style="color: ${color};">[${time}] ${message}</div>`;
+    logDiv.scrollTop = logDiv.scrollHeight;
+    console.log(message);
+  }
+  
+  function isHomeScreenApp() {
+    return window.navigator.standalone === true;
+  }
+  
+  // Register Service Worker from a proper URL
+  async function registerServiceWorker() {
+    if (!('serviceWorker' in navigator)) {
+      addLog('❌ Service Worker not supported in this browser', 'error');
+      return null;
+    }
+    
+    // Check if we're on HTTPS (required for service workers)
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+      addLog('⚠️ Service workers require HTTPS (or localhost)', 'error');
+      addLog('Current protocol: ' + location.protocol, 'error');
+    }
     
     try {
-      // Create blob URL for service worker
+      // Create a blob URL - this is allowed because it's from the same origin
+      // The blob: protocol is not allowed, but blob URLs from HTTP/HTTPS pages are
+      const swCode = createServiceWorkerScript();
       const blob = new Blob([swCode], { type: 'application/javascript' });
       const swUrl = URL.createObjectURL(blob);
+      
+      addLog(`📡 Registering service worker from: ${swUrl.substring(0, 50)}...`, 'info');
+      
       const registration = await navigator.serviceWorker.register(swUrl, { 
         scope: '/',
         updateViaCache: 'none'
       });
-      URL.revokeObjectURL(swUrl);
+      
+      // Keep the blob URL alive - don't revoke immediately
+      // Store it so we can revoke later if needed
+      window.swBlobUrl = swUrl;
       
       addLog('✅ Service Worker registered successfully', 'success');
+      
+      // Update SW status display
+      const swStatus = document.getElementById('swStatus');
+      if (swStatus) {
+        swStatus.innerHTML = '✅ Service Worker: Active';
+        swStatus.style.color = '#34c759';
+      }
+      
       return registration;
     } catch (err) {
-      addLog(`❌ Service Worker error: ${err.message}`, 'error');
+      addLog(`❌ Service Worker registration error: ${err.message}`, 'error');
+      console.error('Full error:', err);
+      
+      const swStatus = document.getElementById('swStatus');
+      if (swStatus) {
+        swStatus.innerHTML = `❌ SW Error: ${err.message}`;
+        swStatus.style.color = '#ff3b30';
+      }
+      
       return null;
     }
   }
   
-  // Convert VAPID key from base64 to Uint8Array
   function urlBase64ToUint8Array(base64String) {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
     const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
@@ -301,11 +372,10 @@
     return outputArray;
   }
   
-  // Subscribe to push using Push API
   async function subscribeToPush() {
-    addLog('🔔 Requesting push subscription...', 'info');
+    addLog('🔔 Starting push subscription process...', 'info');
     
-    // Step 1: Check notification permission
+    // Step 1: Request notification permission
     if (Notification.permission !== 'granted') {
       addLog('📱 Requesting notification permission...', 'info');
       const permission = await Notification.requestPermission();
@@ -317,16 +387,29 @@
       addLog('✅ Notification permission granted', 'success');
     }
     
-    // Step 2: Register service worker if not already
+    // Step 2: Register service worker
     if (!swRegistration) {
+      addLog('📡 Registering service worker...', 'info');
       swRegistration = await registerServiceWorker();
       if (!swRegistration) {
-        addLog('❌ Cannot subscribe without service worker', 'error');
+        addLog('❌ Cannot proceed without service worker', 'error');
         return;
       }
     }
     
-    // Step 3: Check if already subscribed
+    // Wait for service worker to be active
+    if (swRegistration.installing) {
+      addLog('⏳ Waiting for service worker to install...', 'info');
+      await new Promise(resolve => {
+        swRegistration.installing.addEventListener('statechange', e => {
+          if (e.target.state === 'activated' || e.target.state === 'installed') {
+            resolve();
+          }
+        });
+      });
+    }
+    
+    // Step 3: Check existing subscription
     try {
       pushSubscription = await swRegistration.pushManager.getSubscription();
       
@@ -347,15 +430,15 @@
       addLog('✅ Push subscription created successfully!', 'success');
       displaySubscriptionInfo(pushSubscription);
       
-      // Store subscription for demo
-      localStorage.setItem('push_subscription', JSON.stringify({
-        endpoint: pushSubscription.endpoint,
-        keys: pushSubscription.toJSON().keys
-      }));
-      
-      // Send test push (simulate server)
-      addLog('📱 Test push message sent - check your notification!', 'info');
-      simulateServerPush('Welcome!', 'Push notifications are now active!');
+      // Send welcome notification
+      setTimeout(() => {
+        if (Notification.permission === 'granted') {
+          new Notification('🎉 Push Enabled!', {
+            body: 'Lock your phone to test notifications',
+            requireInteraction: true
+          });
+        }
+      }, 500);
       
       updateUI();
       
@@ -363,17 +446,18 @@
       addLog(`❌ Push subscription failed: ${err.message}`, 'error');
       console.error('Full error:', err);
       
-      // Common iOS errors
       if (err.message.includes('key')) {
         addLog('⚠️ VAPID key issue - check your public key', 'error');
       }
       if (err.message.includes('denied')) {
         addLog('⚠️ Go to Settings → Safari → Notifications → Allow', 'error');
       }
+      if (err.message.includes('network')) {
+        addLog('⚠️ Network error - check your connection', 'error');
+      }
     }
   }
   
-  // Display subscription info
   function displaySubscriptionInfo(subscription) {
     const infoDiv = document.getElementById('subscriptionInfo');
     if (infoDiv && subscription) {
@@ -381,51 +465,12 @@
       infoDiv.innerHTML = `
         <strong>📡 Active Push Subscription</strong><br>
         Endpoint: ${subscription.endpoint.substring(0, 80)}...<br>
-        Keys: ${JSON.stringify(subscription.toJSON().keys)}
+        Keys: ${JSON.stringify(subscription.toJSON().keys)}<br>
+        <small style="color:#666;">✓ Ready for lock screen notifications</small>
       `;
     }
   }
   
-  // Simulate a server push (in real app, this would be from your server)
-  function simulateServerPush(title, body) {
-    if (!swRegistration || !swRegistration.active) {
-      addLog('⚠️ Cannot simulate push - service worker not ready', 'error');
-      return;
-    }
-    
-    // This simulates what a server would send
-    // In production, you'd send an HTTP POST to the push endpoint
-    const pushData = {
-      title: title,
-      body: body,
-      icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%2334c759'/%3E%3Ctext x='50' y='67' font-size='50' text-anchor='middle' fill='white'%3E🔔%3C/text%3E%3C/svg%3E"
-    };
-    
-    // Show notification directly (for demo)
-    // In production, this would come from server via push event
-    setTimeout(() => {
-      if (Notification.permission === 'granted') {
-        new Notification(title, {
-          body: body,
-          icon: pushData.icon,
-          requireInteraction: true
-        });
-        
-        // Also try via service worker
-        if (swRegistration.showNotification) {
-          swRegistration.showNotification(title, {
-            body: body,
-            icon: pushData.icon,
-            requireInteraction: true
-          });
-        }
-        
-        addLog(`✅ Push notification shown: "${title}"`, 'success');
-      }
-    }, 500);
-  }
-  
-  // Send local notification (immediate)
   function sendLocalNotification() {
     if (Notification.permission !== 'granted') {
       alert('Please subscribe to push notifications first');
@@ -454,7 +499,7 @@
     
     if (swRegistration && swRegistration.showNotification) {
       swRegistration.showNotification('🔔 Test', {
-        body: 'This would appear even if app is closed',
+        body: 'This appears even if app is closed',
         requireInteraction: true
       });
     }
@@ -462,7 +507,6 @@
     addLog('✅ Test notification sent! Lock your phone to test.', 'success');
   }
   
-  // Schedule a reminder
   function scheduleReminder() {
     const title = document.getElementById('reminderTitle').value;
     const body = document.getElementById('reminderBody').value;
@@ -488,7 +532,6 @@
     
     const timerId = setTimeout(() => {
       if (Notification.permission === 'granted') {
-        // Play sound
         try {
           const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
           const osc = audioCtx.createOscillator();
@@ -517,7 +560,6 @@
     document.getElementById('scheduleStatus').innerHTML = `⏰ Set for ${reminderDate.toLocaleString()}`;
   }
   
-  // Send immediate reminder
   function sendImmediateReminder() {
     const title = document.getElementById('reminderTitle').value;
     const body = document.getElementById('reminderBody').value;
@@ -549,7 +591,6 @@
     addLog(`✅ Sent: ${title}`, 'success');
   }
   
-  // Update UI based on state
   function updateUI() {
     const statusDiv = document.getElementById('permissionStatus');
     const subscribeBtn = document.getElementById('subscribeBtn');
@@ -558,7 +599,6 @@
     const webappStatus = document.getElementById('webappStatus');
     const instructionBox = document.getElementById('instructionBox');
     
-    // Update web app status
     if (isHomeScreenApp()) {
       webappStatus.innerHTML = '✅ Running from Home Screen - Lock screen ready!';
       webappStatus.style.color = '#34c759';
@@ -569,7 +609,6 @@
       instructionBox.style.display = 'block';
     }
     
-    // Update permission status
     if (Notification.permission === 'granted') {
       statusDiv.innerHTML = '✅ NOTIFICATIONS GRANTED • Push Ready';
       statusDiv.className = 'status granted';
@@ -592,24 +631,33 @@
     }
   }
   
-  // Load saved subscription on page load
-  async function loadSavedSubscription() {
+  async function init() {
+    addLog('🚀 Apple Web Push API Demo - Correct Service Worker', 'info');
+    addLog(`📱 Mode: ${isHomeScreenApp() ? 'Home Screen App' : 'Safari'}`, 'info');
+    addLog(`🌐 Protocol: ${location.protocol}`, 'info');
+    
+    // Check if we're on a valid protocol
+    if (location.protocol !== 'https:' && location.protocol !== 'http:') {
+      addLog('⚠️ Warning: Service workers require HTTP or HTTPS protocol', 'error');
+    }
+    
+    // Try to register service worker on load if permissions already granted
     if (Notification.permission === 'granted') {
       swRegistration = await registerServiceWorker();
       if (swRegistration) {
         try {
           pushSubscription = await swRegistration.pushManager.getSubscription();
           if (pushSubscription) {
-            addLog('✅ Restored existing push subscription', 'success');
+            addLog('✅ Found existing subscription', 'success');
             displaySubscriptionInfo(pushSubscription);
           }
         } catch(e) {}
       }
     }
-  }
-  
-  // Set default datetime (1 minute from now)
-  function setDefaultDateTime() {
+    
+    updateUI();
+    
+    // Set default datetime
     const defaultDate = new Date(Date.now() + 60000);
     const year = defaultDate.getFullYear();
     const month = String(defaultDate.getMonth() + 1).padStart(2, '0');
@@ -617,21 +665,10 @@
     const hour = String(defaultDate.getHours()).padStart(2, '0');
     const minute = String(defaultDate.getMinutes()).padStart(2, '0');
     document.getElementById('reminderTime').value = `${year}-${month}-${day}T${hour}:${minute}`;
-  }
-  
-  // Initialize
-  async function init() {
-    addLog('🚀 Apple Web Push API Demo', 'info');
-    addLog(`📱 Mode: ${isHomeScreenApp() ? 'Home Screen App' : 'Safari'}`, 'info');
-    
-    await loadSavedSubscription();
-    updateUI();
-    setDefaultDateTime();
     
     addLog('✅ Ready! Follow instructions for lock screen notifications.', 'success');
   }
   
-  // Start
   init();
 </script>
 </body>
