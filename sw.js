@@ -1,6 +1,4 @@
 // sw.js - Service Worker for Push Notifications
-const CACHE_NAME = 'shopping-reminder-v1';
-
 self.addEventListener('install', (event) => {
   console.log('Service Worker installed');
   self.skipWaiting();
@@ -14,29 +12,36 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('push', (event) => {
   console.log('Push received:', event);
   
-  let title = '🛍️ Shopping Reminder';
-  let options = {
+  let data = {
+    title: '🛍️ Shopping Reminder',
     body: 'Time to check your shopping list!',
     icon: 'https://cdn-icons-png.flaticon.com/512/190/190411.png',
-    badge: 'https://cdn-icons-png.flaticon.com/512/190/190411.png',
-    vibrate: [200, 100, 200],
-    requireInteraction: true,
-    tag: 'shopping-reminder'
+    badge: 'https://cdn-icons-png.flaticon.com/512/190/190411.png'
   };
   
   if (event.data) {
     try {
-      const data = event.data.json();
-      title = data.title || title;
-      options.body = data.body || options.body;
-      options.icon = data.icon || options.icon;
+      const parsed = event.data.json();
+      data = { ...data, ...parsed };
     } catch(e) {
-      options.body = event.data.text();
+      data.body = event.data.text();
     }
   }
   
+  const options = {
+    body: data.body,
+    icon: data.icon,
+    badge: data.badge,
+    vibrate: [200, 100, 200],
+    requireInteraction: true,
+    data: {
+      url: data.url || '/',
+      itemId: data.itemId
+    }
+  };
+  
   event.waitUntil(
-    self.registration.showNotification(title, options)
+    self.registration.showNotification(data.title, options)
   );
 });
 
@@ -47,7 +52,6 @@ self.addEventListener('notificationclick', (event) => {
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true })
       .then(windowClients => {
-        // Open or focus the app
         for (let client of windowClients) {
           if (client.url === '/' && 'focus' in client) {
             return client.focus();
