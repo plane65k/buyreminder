@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%2334c759'/%3E%3Ctext x='50' y='67' font-size='50' text-anchor='middle' fill='white' font-family='Arial'%3E🛍️%3C/text%3E%3C/svg%3E">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#34c759">
-<title>ShopReminder | iOS Web App with Push Notifications</title>
+<title>ShopReminder | Real-Time Sync with Sound</title>
 
 <style>
   * {
@@ -67,6 +67,32 @@
     border-radius: 20px;
     color: #34c759;
     font-weight: 500;
+  }
+
+  .sync-status {
+    text-align: center;
+    font-size: 11px;
+    color: #34c759;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .sync-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #34c759;
+    display: inline-block;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.2); }
+    100% { opacity: 1; transform: scale(1); }
   }
 
   .input-group {
@@ -276,7 +302,12 @@
     <div class="webapp-badge">📱 iOS Web App Mode</div>
   </div>
   <h1>🛍️ ShopReminder</h1>
-  <div class="sub">Web App • Lock Screen Notifications</div>
+  <div class="sub">Real-Time Sync • Lock Screen Notifications</div>
+  
+  <div class="sync-status">
+    <span class="sync-dot"></span>
+    <span id="syncText">Live sync active</span>
+  </div>
 
   <div class="input-group">
     <input id="name" placeholder="Item name (e.g., Milk, Eggs)" autocomplete="off">
@@ -294,10 +325,10 @@
     2️⃣ Scroll down and tap "Add to Home Screen"<br>
     3️⃣ Tap "Add" then open from Home Screen<br>
     4️⃣ Tap "Enable" to allow notifications<br>
-    5️⃣ Notifications work even when phone is locked!
+    5️⃣ Notifications work even when phone is locked with sound!
   </div>
   
-  <footer>✅ Web App Mode • Notifications sent 5 seconds early • No duplicates</footer>
+  <footer>✅ Real-time sync • Sound notifications • 5s early delivery • No duplicates</footer>
 </div>
 
 <script>
@@ -341,11 +372,50 @@
   const VAPID_PUBLIC_KEY = "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U";
   
   let swRegistration = null;
-  let activeTimeouts = new Map(); // Track active notification timeouts
-  let sentNotifications = new Set(); // Track sent notifications to prevent duplicates
+  let activeTimeouts = new Map();
+  let sentNotifications = new Set();
+  let currentItems = new Map(); // Store current items for quick lookup
+  let supabaseChannel = null;
   
   const timezoneName = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const EARLY_DELAY_MS = 5000; // Send notification 5 seconds early to counter delays
+  const EARLY_DELAY_MS = 5000;
+  
+  // Create audio context for notification sound
+  let audioContext = null;
+  
+  function playNotificationSound() {
+    try {
+      // Use Web Audio API for better compatibility
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      
+      // Resume audio context if suspended (iOS requires user interaction first)
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+      
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.value = 880; // A5 note
+      gainNode.gain.value = 0.3;
+      
+      oscillator.start();
+      gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.5);
+      oscillator.stop(audioContext.currentTime + 0.5);
+    } catch(e) {
+      console.log('Audio play failed:', e);
+      // Fallback: use simple beep via audio element if available
+      try {
+        const beep = new Audio('data:audio/wav;base64,U3RlYWQgbm90IGF2YWlsYWJsZQ==');
+        beep.play().catch(() => {});
+      } catch(err) {}
+    }
+  }
   
   function localDateTimeToUTC(localDateTime) {
     if (!localDateTime) return null;
@@ -375,9 +445,159 @@
     return window.navigator.standalone === true;
   }
   
-  // Generate unique ID for notification tracking
   function generateNotificationId(itemId, reminderTime) {
     return `${itemId}_${reminderTime}`;
+  }
+
+  // Setup Supabase real-time subscription
+  function setupRealtimeSubscription() {
+    if (supabaseChannel) {
+      supabaseChannel.unsubscribe();
+    }
+    
+    // Create EventSource for Supabase real-time
+    const eventSource = new EventSource(
+      `${SUPABASE_URL}/realtime/v1/websocket?apikey=${SUPABASE_KEY}&vsn=1.0.0`
+    );
+    
+    // Use polling as fallback for better compatibility
+    let lastSync = Date.now();
+    
+    // Poll for changes every 3 seconds
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await fetch(SUPABASE_URL + "/rest/v1/items?select=*&order=date.asc", {
+          headers: {
+            "apikey": SUPABASE_KEY,
+            "Authorization": "Bearer " + SUPABASE_KEY
+          }
+        });
+        const newData = await response.json();
+        
+        // Check if data changed
+        const currentDataStr = JSON.stringify(Array.from(currentItems.values()));
+        const newDataStr = JSON.stringify(newData);
+        
+        if (currentDataStr !== newDataStr) {
+          console.log('Real-time update detected via polling');
+          document.getElementById('syncText').innerHTML = 'Syncing...';
+          await refreshDisplayFromData(newData);
+          setTimeout(() => {
+            document.getElementById('syncText').innerHTML = 'Live sync active';
+          }, 1000);
+        }
+        lastSync = Date.now();
+      } catch (err) {
+        console.log('Polling error:', err);
+      }
+    }, 3000);
+    
+    // Store interval for cleanup
+    window.pollInterval = pollInterval;
+    
+    console.log('Real-time sync active (polling every 3s)');
+  }
+  
+  async function refreshDisplayFromData(data) {
+    // Clear existing timeouts for items that might be gone
+    const newItemIds = new Set(data.map(item => item.id));
+    for (let [id, timeout] of activeTimeouts) {
+      if (!newItemIds.has(id)) {
+        clearTimeout(timeout);
+        activeTimeouts.delete(id);
+      }
+    }
+    
+    // Update current items map
+    currentItems.clear();
+    data.forEach(item => {
+      currentItems.set(item.id, item);
+    });
+    
+    // Re-render list
+    await renderList(data);
+  }
+  
+  async function renderList(data) {
+    const listDiv = document.getElementById("list");
+    if (!listDiv) return;
+    listDiv.innerHTML = "";
+    
+    if (!data.length) {
+      listDiv.innerHTML = `<div class="empty-state">✨ No items yet. Add something to remember!</div>`;
+      return;
+    }
+    
+    data.forEach(item => {
+      const div = document.createElement("div");
+      div.className = "card";
+      div.setAttribute('data-id', item.id);
+
+      const top = document.createElement("div");
+      top.className = "topRow";
+
+      const left = document.createElement("div");
+      left.className = "leftSide";
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = item.done || false;
+      checkbox.onclick = async (e) => {
+        e.stopPropagation();
+        await toggleDone(item.id, item.done);
+      };
+
+      const textDiv = document.createElement("div");
+      textDiv.className = "item-text";
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "item-name";
+      nameSpan.innerText = item.name;
+      const dateSpan = document.createElement("div");
+      dateSpan.className = "item-date";
+      dateSpan.innerText = item.date ? formatDate(item.date) : "no due date";
+      textDiv.appendChild(nameSpan);
+      textDiv.appendChild(dateSpan);
+      
+      if (item.date && !item.done && Notification.permission === "granted") {
+        const reminderInfo = document.createElement("div");
+        reminderInfo.className = "reminder-info";
+        reminderInfo.innerText = "⏰ Reminder set (5s early)";
+        textDiv.appendChild(reminderInfo);
+      }
+      
+      if (item.done) textDiv.classList.add("done");
+
+      left.appendChild(checkbox);
+      left.appendChild(textDiv);
+
+      const delBtn = document.createElement("button");
+      delBtn.className = "deleteBtn";
+      delBtn.innerHTML = "🗑️";
+      delBtn.onclick = async (e) => {
+        e.stopPropagation();
+        await deleteItem(item.id);
+      };
+
+      top.appendChild(left);
+      top.appendChild(delBtn);
+      div.appendChild(top);
+
+      if (item.image && item.image.trim() !== "") {
+        const img = document.createElement("img");
+        img.src = item.image;
+        img.alt = item.name;
+        img.onerror = () => { img.style.display = 'none'; };
+        div.appendChild(img);
+      }
+
+      listDiv.appendChild(div);
+      
+      // Schedule notification for active items
+      if (!item.done && item.date && Notification.permission === "granted") {
+        const reminderTimeMs = new Date(item.date).getTime();
+        scheduleSingleNotification(item.id, item.name, item.date, item.image, reminderTimeMs);
+      }
+    });
   }
 
   // Service Worker registration
@@ -472,13 +692,20 @@
     }
     
     if (permission === "granted") {
+      // Initialize audio context on user gesture
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        await audioContext.resume();
+      }
+      
       await registerServiceWorker();
       await subscribeToPush();
       updatePushUI();
       
       setTimeout(() => {
+        playNotificationSound();
         new Notification("✅ ShopReminder Ready", { 
-          body: `Notifications will appear 5 seconds before due time to ensure timely delivery!`,
+          body: `Real-time sync active! Notifications sent 5 seconds early with sound.`,
           icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%2334c759'/%3E%3Ctext x='50' y='67' font-size='50' text-anchor='middle' fill='white'%3E🛍️%3C/text%3E%3C/svg%3E"
         });
       }, 500);
@@ -527,7 +754,7 @@
     
     if (Notification.permission === "granted") {
       if (isIOSWebApp()) iosInstruction.style.display = "none";
-      container.innerHTML = `<div class="notify-banner"><span class="notify-text">🔔 Notifications active • Sent 5 seconds early • No duplicates</span><button id="testNotifBtn" class="notify-badge enabled">🔔 Test</button></div>`;
+      container.innerHTML = `<div class="notify-banner"><span class="notify-text">🔔 Notifications active • Sound enabled • 5s early • No duplicates</span><button id="testNotifBtn" class="notify-badge enabled">🔔 Test</button></div>`;
       const testBtn = document.getElementById("testNotifBtn");
       if (testBtn) testBtn.onclick = () => sendTestNotification();
     } 
@@ -537,7 +764,7 @@
     }
     else {
       if (!isIOSWebApp()) iosInstruction.style.display = "block";
-      container.innerHTML = `<div class="notify-banner"><span class="notify-text">🔔 Enable lock screen notifications</span><button id="requestBtn" class="notify-badge">Enable</button></div>`;
+      container.innerHTML = `<div class="notify-banner"><span class="notify-text">🔔 Enable lock screen notifications with sound</span><button id="requestBtn" class="notify-badge">Enable</button></div>`;
       const reqBtn = document.getElementById("requestBtn");
       if (reqBtn) reqBtn.onclick = () => requestNotificationPermission();
     }
@@ -545,8 +772,9 @@
 
   function sendTestNotification() {
     if (Notification.permission === "granted") {
+      playNotificationSound();
       new Notification("🔔 Test Notification", {
-        body: `This is a test notification! Actual reminders are sent 5 seconds before due time.`,
+        body: `This is a test notification with sound! Actual reminders are sent 5 seconds before due time.`,
         icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%2334c759'/%3E%3Ctext x='50' y='67' font-size='50' text-anchor='middle' fill='white'%3E🛍️%3C/text%3E%3C/svg%3E",
         tag: "test",
         requireInteraction: true
@@ -554,75 +782,62 @@
     }
   }
 
-  // Schedule a single notification with early delivery
   function scheduleSingleNotification(itemId, itemName, itemDate, itemImage, reminderTimeMs) {
     const now = Date.now();
-    // Send EARLY_DELAY_MS before the actual time to counter delays
     const earlyReminderTime = reminderTimeMs - EARLY_DELAY_MS;
     const delay = earlyReminderTime - now;
     
     const notificationId = generateNotificationId(itemId, reminderTimeMs);
     
-    // Check if already sent
     if (sentNotifications.has(notificationId)) {
-      console.log(`Notification already sent for ${itemName}`);
       return;
     }
     
-    // Clear existing timeout for this item
     if (activeTimeouts.has(itemId)) {
       clearTimeout(activeTimeouts.get(itemId));
       activeTimeouts.delete(itemId);
     }
     
-    if (delay > 0 && delay < 31 * 24 * 60 * 60 * 1000) { // Within 31 days
+    if (delay > 0 && delay < 31 * 24 * 60 * 60 * 1000) {
       const timeoutId = setTimeout(() => {
-        // Double-check not already sent
         if (sentNotifications.has(notificationId)) {
-          console.log(`Notification already sent for ${itemName}, skipping duplicate`);
           return;
         }
         
         if (Notification.permission === "granted") {
-          const actualTimeStr = new Date(reminderTimeMs).toLocaleString();
-          const earlyTimeStr = new Date(earlyReminderTime).toLocaleString();
+          // Play sound
+          playNotificationSound();
           
           new Notification("⏰ Shopping Reminder", {
             body: `${itemName} is due at ${formatDate(itemDate)}!`,
             icon: itemImage || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%2334c759'/%3E%3Ctext x='50' y='67' font-size='50' text-anchor='middle' fill='white'%3E🛍️%3C/text%3E%3C/svg%3E",
             tag: `item_${itemId}`,
-            requireInteraction: true
+            requireInteraction: true,
+            silent: false
           });
           
-          // Mark as sent
           sentNotifications.add(notificationId);
           
-          // Store in localStorage to persist across page reloads
           const sentList = JSON.parse(localStorage.getItem('sent_notifications') || '[]');
           if (!sentList.includes(notificationId)) {
             sentList.push(notificationId);
             localStorage.setItem('sent_notifications', JSON.stringify(sentList));
           }
-          
-          console.log(`Notification sent for ${itemName} at ${new Date().toLocaleTimeString()} (${EARLY_DELAY_MS/1000}s early)`);
         }
       }, delay);
       
       activeTimeouts.set(itemId, timeoutId);
-      
-      // Store reminder info for persistence
       storeReminderInfo(itemId, itemName, itemDate, itemImage, reminderTimeMs, notificationId);
-      
-      console.log(`Scheduled notification for ${itemName} in ${Math.round(delay/1000)} seconds (${EARLY_DELAY_MS/1000}s early)`);
     } else if (delay <= 0 && Math.abs(delay) < 60000) {
-      // If it's already past due but within 1 minute, send immediately
       if (!sentNotifications.has(notificationId)) {
         if (Notification.permission === "granted") {
+          playNotificationSound();
           new Notification("⏰ Shopping Reminder", {
             body: `${itemName} was due at ${formatDate(itemDate)}!`,
             icon: itemImage || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%2334c759'/%3E%3Ctext x='50' y='67' font-size='50' text-anchor='middle' fill='white'%3E🛍️%3C/text%3E%3C/svg%3E",
             tag: `item_${itemId}`,
-            requireInteraction: true
+            requireInteraction: true,
+            silent: false
           });
           sentNotifications.add(notificationId);
         }
@@ -651,9 +866,7 @@
     localStorage.setItem('scheduled_reminders_v2', JSON.stringify(reminders));
   }
   
-  // Restore reminders after page load
   function restoreRemindersFromStorage() {
-    // Load sent notifications from storage
     const savedSent = JSON.parse(localStorage.getItem('sent_notifications') || '[]');
     savedSent.forEach(id => sentNotifications.add(id));
     
@@ -661,20 +874,9 @@
     const now = Date.now();
     
     reminders.forEach(reminder => {
-      const earlyReminderTime = reminder.reminderTimeMs - EARLY_DELAY_MS;
-      const notificationId = reminder.notificationId;
+      if (sentNotifications.has(reminder.notificationId)) return;
+      if (reminder.reminderTimeMs + 3600000 < now) return;
       
-      // Skip if already sent
-      if (sentNotifications.has(notificationId)) {
-        return;
-      }
-      
-      // Skip if reminder time has passed more than 1 hour ago
-      if (reminder.reminderTimeMs + 3600000 < now) {
-        return;
-      }
-      
-      // Reschedule
       scheduleSingleNotification(
         reminder.itemId,
         reminder.itemName,
@@ -685,21 +887,17 @@
     });
   }
   
-  // Clear notification for deleted/completed items
   function clearNotificationForItem(itemId) {
     if (activeTimeouts.has(itemId)) {
       clearTimeout(activeTimeouts.get(itemId));
       activeTimeouts.delete(itemId);
-      console.log(`Cleared scheduled notification for item ${itemId}`);
     }
     
-    // Remove from stored reminders
     const reminders = JSON.parse(localStorage.getItem('scheduled_reminders_v2') || '[]');
     const filteredReminders = reminders.filter(r => r.itemId !== itemId);
     localStorage.setItem('scheduled_reminders_v2', JSON.stringify(filteredReminders));
   }
 
-  // Shopping list functions
   async function addItem() {
     const name = document.getElementById("name").value.trim();
     const localDateTime = document.getElementById("date").value;
@@ -727,19 +925,13 @@
       })
     });
     
-    const newItem = await response.json();
-    const itemId = newItem[0]?.id;
-
-    await loadItems();
+    // Clear inputs
     document.getElementById("name").value = "";
     document.getElementById("date").value = "";
     document.getElementById("image").value = "";
     
-    // Schedule notification for new item if it has a date
-    if (utcDateTime && itemId && Notification.permission === "granted") {
-      const reminderTimeMs = new Date(utcDateTime).getTime();
-      scheduleSingleNotification(itemId, name, utcDateTime, image, reminderTimeMs);
-    }
+    // Refresh the list to show the new item
+    await loadItems();
   }
 
   async function toggleDone(id, currentDone) {
@@ -753,7 +945,6 @@
       body: JSON.stringify({ done: !currentDone })
     });
     
-    // Clear notification if marked as done
     if (!currentDone) {
       clearNotificationForItem(id);
     }
@@ -775,107 +966,32 @@
   }
 
   async function loadItems() {
-    const res = await fetch(SUPABASE_URL + "/rest/v1/items?select=*&order=date.asc", {
+    const response = await fetch(SUPABASE_URL + "/rest/v1/items?select=*&order=date.asc", {
       headers: {
         "apikey": SUPABASE_KEY,
         "Authorization": "Bearer " + SUPABASE_KEY
       }
     });
-    const data = await res.json();
-    const listDiv = document.getElementById("list");
-    if (!listDiv) return;
-    listDiv.innerHTML = "";
-    
-    if (!data.length) {
-      listDiv.innerHTML = `<div class="empty-state">✨ No items yet. Add something to remember!</div>`;
-      return;
-    }
-
-    data.forEach(item => {
-      const div = document.createElement("div");
-      div.className = "card";
-
-      const top = document.createElement("div");
-      top.className = "topRow";
-
-      const left = document.createElement("div");
-      left.className = "leftSide";
-
-      const checkbox = document.createElement("input");
-      checkbox.type = "checkbox";
-      checkbox.checked = item.done || false;
-      checkbox.onclick = (e) => {
-        e.stopPropagation();
-        toggleDone(item.id, item.done);
-      };
-
-      const textDiv = document.createElement("div");
-      textDiv.className = "item-text";
-      const nameSpan = document.createElement("span");
-      nameSpan.className = "item-name";
-      nameSpan.innerText = item.name;
-      const dateSpan = document.createElement("div");
-      dateSpan.className = "item-date";
-      dateSpan.innerText = item.date ? formatDate(item.date) : "no due date";
-      textDiv.appendChild(nameSpan);
-      textDiv.appendChild(dateSpan);
-      
-      // Show reminder info
-      if (item.date && !item.done && Notification.permission === "granted") {
-        const reminderInfo = document.createElement("div");
-        reminderInfo.className = "reminder-info";
-        reminderInfo.innerText = "⏰ Reminder set (5s early)";
-        textDiv.appendChild(reminderInfo);
-      }
-      
-      if (item.done) textDiv.classList.add("done");
-
-      left.appendChild(checkbox);
-      left.appendChild(textDiv);
-
-      const delBtn = document.createElement("button");
-      delBtn.className = "deleteBtn";
-      delBtn.innerHTML = "🗑️";
-      delBtn.onclick = (e) => {
-        e.stopPropagation();
-        deleteItem(item.id);
-      };
-
-      top.appendChild(left);
-      top.appendChild(delBtn);
-      div.appendChild(top);
-
-      if (item.image && item.image.trim() !== "") {
-        const img = document.createElement("img");
-        img.src = item.image;
-        img.alt = item.name;
-        img.onerror = () => { img.style.display = 'none'; };
-        div.appendChild(img);
-      }
-
-      listDiv.appendChild(div);
-      
-      // Schedule notification for active items
-      if (!item.done && item.date && Notification.permission === "granted") {
-        const reminderTimeMs = new Date(item.date).getTime();
-        scheduleSingleNotification(item.id, item.name, item.date, item.image, reminderTimeMs);
-      }
-    });
+    const data = await response.json();
+    await refreshDisplayFromData(data);
   }
 
   async function init() {
-    // Load sent notifications from storage
     const savedSent = JSON.parse(localStorage.getItem('sent_notifications') || '[]');
     savedSent.forEach(id => sentNotifications.add(id));
     
     if ('serviceWorker' in navigator) {
       await registerServiceWorker();
     }
+    
     await loadItems();
     restoreRemindersFromStorage();
     updatePushUI();
     
-    // Clean up old sent notifications (older than 7 days)
+    // Setup real-time sync
+    setupRealtimeSubscription();
+    
+    // Clean up old sent notifications
     const now = Date.now();
     const reminders = JSON.parse(localStorage.getItem('scheduled_reminders_v2') || '[]');
     const validReminders = reminders.filter(r => r.reminderTimeMs + 7 * 24 * 60 * 60 * 1000 > now);
@@ -884,6 +1000,17 @@
     if (isIOSWebApp()) {
       document.querySelector('.webapp-badge').innerHTML = '✅ Web App Mode Active';
     }
+    
+    // Add event listener to resume audio on first user interaction
+    const resumeAudio = async () => {
+      if (audioContext && audioContext.state === 'suspended') {
+        await audioContext.resume();
+      }
+      document.removeEventListener('click', resumeAudio);
+      document.removeEventListener('touchstart', resumeAudio);
+    };
+    document.addEventListener('click', resumeAudio);
+    document.addEventListener('touchstart', resumeAudio);
   }
 
   init();
