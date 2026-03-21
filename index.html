@@ -3,779 +3,272 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<!-- CRITICAL: These meta tags are REQUIRED for iOS web app -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="ShopReminder">
-<meta name="apple-touch-fullscreen" content="yes">
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%2334c759'/%3E%3Ctext x='50' y='67' font-size='50' text-anchor='middle' fill='white'%3E🛍️%3C/text%3E%3C/svg%3E">
-<link rel="manifest" href="data:application/manifest+json,{%22name%22:%22ShopReminder%22,%22short_name%22:%22Reminder%22,%22start_url%22:%22/%22,%22display%22:%22standalone%22,%22background_color%22:%22%23f2f2f7%22,%22theme_color%22:%22%2334c759%22}">
-<meta name="theme-color" content="#34c759">
-<title>ShopReminder | Mobile Push Notifications</title>
-
+<meta name="apple-mobile-web-app-title" content="Reminder">
+<!-- App icon (required for home screen) -->
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%2334c759'/%3E%3Ctext x='50' y='67' font-size='50' text-anchor='middle' fill='white'%3E🔔%3C/text%3E%3C/svg%3E">
+<title>Lock Screen Notifications Test</title>
 <style>
   * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    -webkit-tap-highlight-color: transparent;
   }
-
   body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     background: #f2f2f7;
-    padding: 20px 16px;
+    padding: 20px;
+    min-height: 100vh;
     display: flex;
     justify-content: center;
-    min-height: 100vh;
+    align-items: center;
   }
-
   .container {
+    max-width: 400px;
     width: 100%;
-    max-width: 420px;
-    margin: 20px auto 0 auto;
+    background: white;
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
   }
-
   h1 {
-    font-size: 34px;
-    font-weight: 700;
+    font-size: 28px;
     text-align: center;
     margin-bottom: 8px;
-    background: linear-gradient(135deg, #1c1c1e, #2c2c2e);
-    background-clip: text;
-    -webkit-background-clip: text;
-    color: transparent;
+    color: #1c1c1e;
   }
-
-  .sub {
+  .status-card {
+    background: #f2f2f7;
+    border-radius: 16px;
+    padding: 16px;
+    margin: 20px 0;
     text-align: center;
-    color: #8e8e93;
+  }
+  .status {
     font-size: 14px;
-    margin-bottom: 24px;
-  }
-
-  .webapp-badge {
-    text-align: center;
-    margin-bottom: 16px;
-    font-size: 12px;
-    background: #34c75920;
-    display: inline-block;
-    width: auto;
-    margin-left: auto;
-    margin-right: auto;
-    padding: 6px 12px;
-    border-radius: 20px;
-    color: #34c759;
-    font-weight: 500;
-  }
-
-  .sync-status {
-    text-align: center;
-    font-size: 11px;
-    color: #34c759;
-    margin-bottom: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-  }
-
-  .sync-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background-color: #34c759;
-    display: inline-block;
-    animation: pulse 2s infinite;
-  }
-
-  @keyframes pulse {
-    0% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.5; transform: scale(1.2); }
-    100% { opacity: 1; transform: scale(1); }
-  }
-
-  .input-group {
-    background: white;
-    border-radius: 20px;
-    padding: 8px 12px;
-    margin-top: 12px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-  }
-
-  input, button {
-    width: 100%;
-    padding: 14px 16px;
+    color: #8e8e93;
     margin-top: 8px;
-    border-radius: 18px;
-    border: none;
-    font-size: 16px;
-    box-sizing: border-box;
   }
-
-  input {
-    background: #f9f9fb;
-    border: 1px solid #e5e5ea;
+  .permission-status {
+    font-size: 20px;
+    font-weight: bold;
+    margin: 10px 0;
   }
-
-  input:focus {
-    outline: none;
-    border-color: #34c759;
-    background: white;
-    box-shadow: 0 0 0 3px rgba(52,199,89,0.2);
-  }
-
-  .add-btn {
-    background: #34c759;
-    color: white;
-    font-weight: 600;
-    margin-top: 16px;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(52,199,89,0.3);
-  }
-
-  .add-btn:active {
-    transform: scale(0.97);
-    background: #2db84f;
-  }
-
-  .notify-banner {
-    background: #ffffff;
-    border-radius: 20px;
-    padding: 14px 16px;
-    margin: 20px 0 8px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    border: 1px solid #e9e9ef;
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-
-  .notify-text {
-    font-size: 14px;
-    font-weight: 500;
-    color: #1c1c1e;
-    flex: 1;
-  }
-
-  .notify-badge {
-    background: #007aff;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 30px;
-    color: white;
-    font-weight: 500;
-    font-size: 13px;
-    width: auto;
-    margin: 0;
-    cursor: pointer;
-  }
-
-  .notify-badge.enabled {
-    background: #34c759;
-  }
-
-  .card {
-    background: white;
-    padding: 14px;
-    margin-top: 12px;
-    border-radius: 22px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.05);
-    transition: all 0.2s;
-    animation: fadeIn 0.2s ease;
-  }
-
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(6px);}
-    to { opacity: 1; transform: translateY(0);}
-  }
-
-  .topRow {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  .leftSide {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    flex: 1;
-  }
-
-  input[type="checkbox"] {
-    width: 22px;
-    height: 22px;
-    margin-top: 2px;
-    accent-color: #34c759;
-  }
-
-  .item-text {
-    flex: 1;
-    line-height: 1.4;
-  }
-
-  .item-name {
-    font-weight: 620;
-    font-size: 16px;
-    color: #1c1c1e;
-    display: block;
-  }
-
-  .item-date {
-    font-size: 12px;
-    color: #8e8e93;
-    margin-top: 4px;
-  }
-
-  .done .item-name {
-    text-decoration: line-through;
-    color: #8e8e93;
-  }
-
-  .deleteBtn {
-    background: transparent;
-    border: none;
-    font-size: 22px;
-    cursor: pointer;
-    padding: 6px;
-    border-radius: 40px;
-    width: auto;
-    color: #ff3b30;
-    opacity: 0.7;
-  }
-
-  .deleteBtn:active {
-    opacity: 1;
-    transform: scale(0.92);
-  }
-
-  img {
+  .granted { color: #34c759; }
+  .denied { color: #ff3b30; }
+  .default { color: #ff9500; }
+  button {
     width: 100%;
-    border-radius: 18px;
+    padding: 14px;
+    border: none;
+    border-radius: 14px;
+    font-size: 16px;
+    font-weight: 600;
     margin-top: 12px;
-    max-height: 180px;
-    object-fit: cover;
+    cursor: pointer;
+    transition: all 0.2s;
   }
-
-  .empty-state {
-    text-align: center;
-    padding: 48px 20px;
-    color: #aeaeb2;
-    font-size: 15px;
+  .btn-primary {
+    background: #34c759;
+    color: white;
   }
-
-  .ios-instruction {
+  .btn-primary:active { transform: scale(0.98); background: #2db84f; }
+  .btn-secondary {
+    background: #007aff;
+    color: white;
+  }
+  .instruction-box {
     background: #e3f2fd;
     border-radius: 16px;
-    padding: 12px;
-    margin-top: 16px;
-    font-size: 12px;
+    padding: 16px;
+    margin-top: 20px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .instruction-box h3 {
+    font-size: 14px;
+    margin-bottom: 8px;
     color: #0066cc;
-    text-align: center;
   }
-
-  footer {
-    font-size: 12px;
-    text-align: center;
-    color: #8e8e93;
-    margin-top: 28px;
-    padding-bottom: 20px;
+  .instruction-step {
+    margin: 8px 0;
+    padding-left: 20px;
+    position: relative;
   }
-  
-  .reminder-info {
-    font-size: 10px;
-    color: #34c759;
-    margin-top: 4px;
+  .instruction-step:before {
+    content: "📱";
+    position: absolute;
+    left: -4px;
   }
-  
-  .loading {
-    text-align: center;
-    padding: 40px;
-    color: #8e8e93;
+  .test-area {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #e5e5ea;
   }
-  
-  .error-banner {
-    background: #ffe5e5;
-    border: 1px solid #ff3b30;
+  input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #e5e5ea;
     border-radius: 12px;
-    padding: 10px;
-    margin: 10px 0;
-    font-size: 12px;
-    color: #ff3b30;
+    font-size: 16px;
+    margin: 8px 0;
+  }
+  .timestamp {
+    font-size: 11px;
+    color: #8e8e93;
     text-align: center;
+    margin-top: 16px;
+  }
+  .webapp-warning {
+    background: #ff950020;
+    border-left: 4px solid #ff9500;
+    padding: 12px;
+    margin: 12px 0;
+    font-size: 13px;
   }
 </style>
 </head>
 <body>
-
 <div class="container">
-  <div style="text-align: center;">
-    <div class="webapp-badge" id="webappBadge">📱 iOS Web App Mode</div>
-  </div>
-  <h1>🛍️ ShopReminder</h1>
-  <div class="sub">Mobile • Lock Screen Notifications</div>
+  <h1>🔔 Lock Screen Test</h1>
+  <p style="text-align:center; color:#8e8e93; font-size:14px;">iOS Web App Push Notifications</p>
   
-  <div class="sync-status" id="syncStatus">
-    <span class="sync-dot"></span>
-    <span id="syncText">Connecting...</span>
+  <div class="status-card">
+    <div style="font-size:14px; color:#8e8e93;">Notification Status</div>
+    <div class="permission-status" id="permissionStatus">Checking...</div>
+    <div class="status" id="webappStatus"></div>
   </div>
-
-  <div class="input-group">
-    <input id="name" placeholder="Item name (e.g., Milk, Eggs)" autocomplete="off">
-    <input id="date" type="datetime-local">
-    <input id="image" placeholder="Image URL (optional)">
+  
+  <button class="btn-primary" id="enableBtn" onclick="requestPushPermission()">🔔 Enable Notifications</button>
+  <button class="btn-secondary" id="testBtn" onclick="sendTestNotification()" style="display:none;">📱 Test Notification</button>
+  
+  <div class="test-area" id="testArea" style="display:none;">
+    <h3 style="margin-bottom:8px;">⏰ Schedule Test Reminder</h3>
+    <input type="text" id="reminderText" placeholder="What to remind you about?">
+    <input type="datetime-local" id="reminderTime">
+    <button class="btn-primary" onclick="scheduleTestReminder()">Schedule Reminder</button>
+    <div id="scheduledInfo" style="font-size:12px; color:#34c759; margin-top:8px;"></div>
   </div>
-  <button class="add-btn" onclick="addItem()">➕ Add item</button>
-
-  <div id="pushStatusContainer"></div>
-  <div id="list"><div class="loading">Loading items...</div></div>
   
+  <div class="instruction-box" id="instructionBox">
+    <h3>⚠️ CRITICAL: For Lock Screen Notifications</h3>
+    <div class="instruction-step">1. Tap Share button <span style="background:#e5e5ea; padding:2px 8px; border-radius:12px;">⎙</span></div>
+    <div class="instruction-step">2. Scroll down and tap <strong>"Add to Home Screen"</strong></div>
+    <div class="instruction-step">3. Tap <strong>"Add"</strong> in top right</div>
+    <div class="instruction-step">4. <strong>CLOSE SAFARI</strong> and open the app from your <strong>HOME SCREEN</strong></div>
+    <div class="instruction-step">5. Tap <strong>"Enable Notifications"</strong> and allow</div>
+    <div class="instruction-step">6. <strong>Lock your phone</strong> - notifications will arrive!</div>
+  </div>
   
+  <div class="timestamp" id="timestamp"></div>
+</div>
 
 <script>
-  const SUPABASE_URL = "https://akxoqcizqqqmwezocrvv.supabase.co";
-  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFreG9xY2l6cXFxbXdlem9jcnZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5NzEyMDIsImV4cCI6MjA4OTU0NzIwMn0.Z6MlXYW47gSlIEYEomjLHUwEeXV7pfBYYq9b73HXzhs";
-  
-  const VAPID_PUBLIC_KEY = "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U";
+  // VAPID Key (required for iOS push)
+  const VAPID_PUBLIC_KEY = "BN9XGEMBlxo9xB0UDS2XLYGDYbJHQJOQyVRLjC3lAEDk7LWF2rhYPrYJG8Il3sDx9pU84o4c5Pvsbm5njv1qm3Y";
   
   let swRegistration = null;
-  let activeTimeouts = new Map();
-  let sentNotifications = new Set();
-  let currentItems = [];
-  let lastSyncTime = 0;
-  let syncInterval = null;
-  let isOnline = navigator.onLine;
+  let activeTimers = [];
   
-  const EARLY_DELAY_MS = 5000;
-  
-  // Helper functions
-  function localDateTimeToUTC(localDateTime) {
-    if (!localDateTime) return null;
-    const [date, time] = localDateTime.split('T');
-    const [year, month, day] = date.split('-');
-    const [hour, minute] = time.split(':');
-    const localDate = new Date(year, month - 1, day, hour, minute);
-    return localDate.toISOString();
-  }
-  
-  function formatDate(utcDateString) {
-    if (!utcDateString) return "no due date";
-    try {
-      const date = new Date(utcDateString);
-      return date.toLocaleString([], { 
-        month: 'short', 
-        day: 'numeric', 
-        hour: '2-digit', 
-        minute: '2-digit'
-      });
-    } catch(e) { 
-      return "invalid date"; 
-    }
-  }
-  
-  function isIOSWebApp() {
+  // Check if running from home screen (CRITICAL for lock screen notifications)
+  function isRunningAsWebApp() {
     return window.navigator.standalone === true;
   }
   
-  function generateNotificationId(itemId, reminderTime) {
-    return `${itemId}_${reminderTime}`;
-  }
-  
-  // Play notification sound
-  function playNotificationSound() {
-    try {
-      // Use simple Audio element for iOS compatibility
-      const audio = new Audio();
-      audio.src = 'data:audio/wav;base64,U3RlYWQgbm90IGF2YWlsYWJsZSBidXQgc291bmQgd2lsbCBiZSBwbGF5ZWQ=';
-      
-      // Fallback: use Web Audio
-      if (window.AudioContext || window.webkitAudioContext) {
-        const context = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = context.createOscillator();
-        const gain = context.createGain();
-        
-        oscillator.connect(gain);
-        gain.connect(context.destination);
-        
-        oscillator.frequency.value = 880;
-        gain.gain.value = 0.2;
-        
-        oscillator.start();
-        gain.gain.exponentialRampToValueAtTime(0.00001, context.currentTime + 0.5);
-        oscillator.stop(context.currentTime + 0.5);
-        
-        // Resume if suspended
-        if (context.state === 'suspended') {
-          context.resume();
-        }
-      }
-    } catch(e) {
-      console.log('Sound play failed:', e);
+  // Update UI based on web app status
+  function updateWebAppStatus() {
+    const statusDiv = document.getElementById('webappStatus');
+    const instructionBox = document.getElementById('instructionBox');
+    
+    if (isRunningAsWebApp()) {
+      statusDiv.innerHTML = '✅ Running as Web App (Home Screen)';
+      statusDiv.style.color = '#34c759';
+      if (instructionBox) instructionBox.style.display = 'none';
+    } else {
+      statusDiv.innerHTML = '⚠️ Running in Safari - Add to Home Screen for lock screen notifications';
+      statusDiv.style.color = '#ff9500';
+      if (instructionBox) instructionBox.style.display = 'block';
     }
   }
   
-  // Fetch items from Supabase
-  async function fetchItems() {
-    try {
-      const response = await fetch(SUPABASE_URL + "/rest/v1/items?select=*&order=date.asc", {
-        headers: {
-          "apikey": SUPABASE_KEY,
-          "Authorization": "Bearer " + SUPABASE_KEY
-        }
-      });
-      
-      if (!response.ok) throw new Error('Failed to fetch');
-      
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error('Fetch error:', error);
+  // Update permission display
+  function updatePermissionUI() {
+    const statusDiv = document.getElementById('permissionStatus');
+    const enableBtn = document.getElementById('enableBtn');
+    const testBtn = document.getElementById('testBtn');
+    const testArea = document.getElementById('testArea');
+    
+    if (Notification.permission === 'granted') {
+      statusDiv.innerHTML = '✅ NOTIFICATIONS GRANTED';
+      statusDiv.className = 'permission-status granted';
+      enableBtn.style.display = 'none';
+      testBtn.style.display = 'block';
+      testArea.style.display = 'block';
+    } else if (Notification.permission === 'denied') {
+      statusDiv.innerHTML = '❌ NOTIFICATIONS BLOCKED';
+      statusDiv.className = 'permission-status denied';
+      enableBtn.innerHTML = '📱 Open Settings to Enable';
+      enableBtn.onclick = () => {
+        alert('Please go to: Settings → Safari → Notifications → Allow Notifications');
+      };
+    } else {
+      statusDiv.innerHTML = '⏳ NOTIFICATIONS NOT ENABLED';
+      statusDiv.className = 'permission-status default';
+      enableBtn.style.display = 'block';
+    }
+  }
+  
+  // Register Service Worker
+  async function registerServiceWorker() {
+    if (!('serviceWorker' in navigator)) {
+      console.log('Service workers not supported');
       return null;
     }
-  }
-  
-  // Render items to DOM
-  async function renderItems(items) {
-    const listDiv = document.getElementById("list");
-    if (!listDiv) return;
     
-    if (!items || items.length === 0) {
-      listDiv.innerHTML = `<div class="empty-state">✨ No items yet. Add something to remember!</div>`;
-      return;
-    }
-    
-    listDiv.innerHTML = "";
-    
-    items.forEach(item => {
-      const div = document.createElement("div");
-      div.className = "card";
-      div.setAttribute('data-id', item.id);
-
-      const top = document.createElement("div");
-      top.className = "topRow";
-
-      const left = document.createElement("div");
-      left.className = "leftSide";
-
-      const checkbox = document.createElement("input");
-      checkbox.type = "checkbox";
-      checkbox.checked = item.done || false;
-      checkbox.onclick = async (e) => {
-        e.stopPropagation();
-        await toggleDone(item.id, item.done);
-      };
-
-      const textDiv = document.createElement("div");
-      textDiv.className = "item-text";
-      const nameSpan = document.createElement("span");
-      nameSpan.className = "item-name";
-      nameSpan.innerText = item.name;
-      const dateSpan = document.createElement("div");
-      dateSpan.className = "item-date";
-      dateSpan.innerText = item.date ? formatDate(item.date) : "no due date";
-      textDiv.appendChild(nameSpan);
-      textDiv.appendChild(dateSpan);
-      
-      if (item.date && !item.done && Notification.permission === "granted") {
-        const reminderInfo = document.createElement("div");
-        reminderInfo.className = "reminder-info";
-        reminderInfo.innerText = "⏰ Reminder set";
-        textDiv.appendChild(reminderInfo);
-      }
-      
-      if (item.done) textDiv.classList.add("done");
-
-      left.appendChild(checkbox);
-      left.appendChild(textDiv);
-
-      const delBtn = document.createElement("button");
-      delBtn.className = "deleteBtn";
-      delBtn.innerHTML = "🗑️";
-      delBtn.onclick = async (e) => {
-        e.stopPropagation();
-        await deleteItem(item.id);
-      };
-
-      top.appendChild(left);
-      top.appendChild(delBtn);
-      div.appendChild(top);
-
-      if (item.image && item.image.trim() !== "") {
-        const img = document.createElement("img");
-        img.src = item.image;
-        img.alt = item.name;
-        img.onerror = () => { img.style.display = 'none'; };
-        div.appendChild(img);
-      }
-
-      listDiv.appendChild(div);
-      
-      // Schedule notification
-      if (!item.done && item.date && Notification.permission === "granted") {
-        const reminderTimeMs = new Date(item.date).getTime();
-        scheduleNotification(item.id, item.name, item.date, item.image, reminderTimeMs);
-      }
-    });
-  }
-  
-  // Schedule a single notification
-  function scheduleNotification(itemId, itemName, itemDate, itemImage, reminderTimeMs) {
-    const now = Date.now();
-    const earlyTime = reminderTimeMs - EARLY_DELAY_MS;
-    const delay = earlyTime - now;
-    const notificationId = generateNotificationId(itemId, reminderTimeMs);
-    
-    if (sentNotifications.has(notificationId)) return;
-    
-    if (activeTimeouts.has(itemId)) {
-      clearTimeout(activeTimeouts.get(itemId));
-      activeTimeouts.delete(itemId);
-    }
-    
-    if (delay > 0 && delay < 31 * 24 * 60 * 60 * 1000) {
-      const timeoutId = setTimeout(() => {
-        if (sentNotifications.has(notificationId)) return;
-        
-        if (Notification.permission === "granted") {
-          playNotificationSound();
-          
-          new Notification("⏰ Shopping Reminder", {
-            body: `${itemName} is due at ${formatDate(itemDate)}!`,
-            icon: itemImage || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%2334c759'/%3E%3Ctext x='50' y='67' font-size='50' text-anchor='middle' fill='white'%3E🛍️%3C/text%3E%3C/svg%3E",
-            tag: `item_${itemId}`,
-            requireInteraction: true,
-            silent: false
-          });
-          
-          sentNotifications.add(notificationId);
-          
-          // Persist sent notification
-          const sent = JSON.parse(localStorage.getItem('sent_notifications') || '[]');
-          if (!sent.includes(notificationId)) {
-            sent.push(notificationId);
-            localStorage.setItem('sent_notifications', JSON.stringify(sent));
-          }
-        }
-      }, delay);
-      
-      activeTimeouts.set(itemId, timeoutId);
-      
-      // Store reminder
-      const reminders = JSON.parse(localStorage.getItem('reminders') || '[]');
-      const existing = reminders.find(r => r.itemId === itemId);
-      if (!existing) {
-        reminders.push({ itemId, itemName, itemDate, itemImage, reminderTimeMs, notificationId });
-        localStorage.setItem('reminders', JSON.stringify(reminders));
-      }
-    }
-  }
-  
-  // Restore reminders after page load
-  function restoreReminders() {
-    const sent = JSON.parse(localStorage.getItem('sent_notifications') || '[]');
-    sent.forEach(id => sentNotifications.add(id));
-    
-    const reminders = JSON.parse(localStorage.getItem('reminders') || '[]');
-    reminders.forEach(reminder => {
-      if (!sentNotifications.has(reminder.notificationId)) {
-        scheduleNotification(
-          reminder.itemId, reminder.itemName, reminder.itemDate, 
-          reminder.itemImage, reminder.reminderTimeMs
-        );
-      }
-    });
-  }
-  
-  // Sync with server
-  async function syncWithServer() {
-    try {
-      const newItems = await fetchItems();
-      if (newItems) {
-        const currentStr = JSON.stringify(currentItems);
-        const newStr = JSON.stringify(newItems);
-        
-        if (currentStr !== newStr) {
-          currentItems = newItems;
-          await renderItems(currentItems);
-          
-          // Update sync status
-          const syncText = document.getElementById('syncText');
-          if (syncText) {
-            syncText.innerHTML = 'Live sync active';
-            setTimeout(() => {
-              if (syncText) syncText.innerHTML = 'Live sync active';
-            }, 1000);
-          }
-        }
-        
-        lastSyncTime = Date.now();
-      }
-    } catch (error) {
-      console.error('Sync error:', error);
-      const syncText = document.getElementById('syncText');
-      if (syncText) syncText.innerHTML = 'Sync error, retrying...';
-    }
-  }
-  
-  // Load initial data and start sync
-  async function loadAndSync() {
-    const syncText = document.getElementById('syncText');
-    if (syncText) syncText.innerHTML = 'Loading...';
-    
-    const items = await fetchItems();
-    if (items) {
-      currentItems = items;
-      await renderItems(currentItems);
-      if (syncText) syncText.innerHTML = 'Live sync active';
-    } else {
-      if (syncText) syncText.innerHTML = 'Offline mode';
-    }
-    
-    // Start sync interval (every 5 seconds for mobile)
-    if (syncInterval) clearInterval(syncInterval);
-    syncInterval = setInterval(syncWithServer, 5000);
-  }
-  
-  // CRUD operations
-  async function addItem() {
-    const name = document.getElementById("name").value.trim();
-    const localDateTime = document.getElementById("date").value;
-    const image = document.getElementById("image").value.trim();
-
-    if (!name) {
-      alert("Please enter an item name");
-      return;
-    }
-
-    const utcDateTime = localDateTime ? localDateTimeToUTC(localDateTime) : null;
-
-    try {
-      const response = await fetch(SUPABASE_URL + "/rest/v1/items", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "apikey": SUPABASE_KEY,
-          "Authorization": "Bearer " + SUPABASE_KEY
-        },
-        body: JSON.stringify({ 
-          name, 
-          date: utcDateTime, 
-          image: image || null, 
-          done: false 
-        })
-      });
-      
-      if (response.ok) {
-        // Clear inputs
-        document.getElementById("name").value = "";
-        document.getElementById("date").value = "";
-        document.getElementById("image").value = "";
-        
-        // Force sync immediately
-        await syncWithServer();
-      } else {
-        alert("Failed to add item. Please try again.");
-      }
-    } catch (error) {
-      console.error('Add error:', error);
-      alert("Network error. Please check your connection.");
-    }
-  }
-
-  async function toggleDone(id, currentDone) {
-    try {
-      await fetch(SUPABASE_URL + "/rest/v1/items?id=eq." + id, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "apikey": SUPABASE_KEY,
-          "Authorization": "Bearer " + SUPABASE_KEY
-        },
-        body: JSON.stringify({ done: !currentDone })
-      });
-      
-      if (!currentDone) {
-        if (activeTimeouts.has(id)) {
-          clearTimeout(activeTimeouts.get(id));
-          activeTimeouts.delete(id);
-        }
-      }
-      
-      await syncWithServer();
-    } catch (error) {
-      console.error('Toggle error:', error);
-    }
-  }
-
-  async function deleteItem(id) {
-    try {
-      await fetch(SUPABASE_URL + "/rest/v1/items?id=eq." + id, {
-        method: "DELETE",
-        headers: {
-          "apikey": SUPABASE_KEY,
-          "Authorization": "Bearer " + SUPABASE_KEY
-        }
-      });
-      
-      if (activeTimeouts.has(id)) {
-        clearTimeout(activeTimeouts.get(id));
-        activeTimeouts.delete(id);
-      }
-      
-      // Remove from stored reminders
-      const reminders = JSON.parse(localStorage.getItem('reminders') || '[]');
-      const filtered = reminders.filter(r => r.itemId !== id);
-      localStorage.setItem('reminders', JSON.stringify(filtered));
-      
-      await syncWithServer();
-    } catch (error) {
-      console.error('Delete error:', error);
-    }
-  }
-  
-  // Service Worker for push notifications
-  async function registerServiceWorker() {
-    if (!('serviceWorker' in navigator)) return null;
-    
+    // Create service worker with push support
     const swCode = `
       self.addEventListener('install', (event) => {
         self.skipWaiting();
+        console.log('[SW] Installed');
       });
       
       self.addEventListener('activate', (event) => {
         event.waitUntil(clients.claim());
+        console.log('[SW] Activated');
       });
       
       self.addEventListener('push', (event) => {
-        let notificationData = {
-          title: '🛍️ ShopReminder',
-          body: 'Time to check your shopping list!',
-          icon: '/apple-touch-icon.png',
-          badge: '/apple-touch-icon.png'
-        };
+        console.log('[SW] Push received', event);
+        
+        let title = '🔔 Reminder';
+        let body = 'Time to check your reminder!';
+        let icon = '/apple-touch-icon.png';
         
         if (event.data) {
           try {
-            const parsed = event.data.json();
-            notificationData = { ...notificationData, ...parsed };
+            const data = event.data.json();
+            title = data.title || title;
+            body = data.body || body;
+            icon = data.icon || icon;
           } catch(e) {
-            notificationData.body = event.data.text();
+            body = event.data.text();
           }
         }
         
+        const options = {
+          body: body,
+          icon: icon,
+          badge: icon,
+          vibrate: [200, 100, 200],
+          tag: 'reminder',
+          requireInteraction: true,
+          silent: false
+        };
+        
         event.waitUntil(
-          self.registration.showNotification(notificationData.title, {
-            body: notificationData.body,
-            icon: notificationData.icon,
-            badge: notificationData.badge,
-            vibrate: [200, 100, 200],
-            tag: 'reminder',
-            requireInteraction: true,
-            silent: false
-          })
+          self.registration.showNotification(title, options)
         );
       });
       
@@ -800,30 +293,41 @@
     try {
       const blob = new Blob([swCode], { type: 'application/javascript' });
       const swUrl = URL.createObjectURL(blob);
-      swRegistration = await navigator.serviceWorker.register(swUrl, { scope: '/' });
+      const registration = await navigator.serviceWorker.register(swUrl, { 
+        scope: '/',
+        updateViaCache: 'none'
+      });
       URL.revokeObjectURL(swUrl);
-      return swRegistration;
+      console.log('Service worker registered');
+      return registration;
     } catch (err) {
       console.error('SW registration failed:', err);
       return null;
     }
   }
   
-  async function subscribeToPush() {
-    if (!swRegistration) await registerServiceWorker();
-    if (!swRegistration || !swRegistration.pushManager) return null;
+  // Subscribe to push notifications
+  async function subscribeToPush(registration) {
+    if (!registration || !registration.pushManager) {
+      console.log('Push manager not available');
+      return null;
+    }
     
     try {
-      let subscription = await swRegistration.pushManager.getSubscription();
+      let subscription = await registration.pushManager.getSubscription();
+      
       if (!subscription) {
-        subscription = await swRegistration.pushManager.subscribe({
+        subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
         });
       }
+      
+      console.log('Push subscription successful:', subscription.endpoint);
+      localStorage.setItem('push_subscribed', 'true');
       return subscription;
     } catch (err) {
-      console.error('Push subscription error:', err);
+      console.error('Push subscription failed:', err);
       return null;
     }
   }
@@ -839,114 +343,219 @@
     return outputArray;
   }
   
-  async function requestNotificationPermission() {
+  // Request permission and setup push
+  async function requestPushPermission() {
     if (!('Notification' in window)) {
-      alert("Notifications not supported");
-      return false;
+      alert('This browser does not support notifications');
+      return;
     }
     
-    let permission = Notification.permission;
-    if (permission !== 'granted') {
-      permission = await Notification.requestPermission();
-    }
+    // CRITICAL: On iOS, permission request must be from user gesture
+    const permission = await Notification.requestPermission();
     
-    if (permission === "granted") {
-      await registerServiceWorker();
-      await subscribeToPush();
-      updatePushUI();
+    if (permission === 'granted') {
+      // Register service worker
+      swRegistration = await registerServiceWorker();
       
+      if (swRegistration) {
+        await subscribeToPush(swRegistration);
+      }
+      
+      updatePermissionUI();
+      
+      // Send welcome notification
       setTimeout(() => {
-        playNotificationSound();
-        new Notification("✅ ShopReminder Ready", { 
-          body: "Notifications will work when your phone is locked!",
-          icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%2334c759'/%3E%3Ctext x='50' y='67' font-size='50' text-anchor='middle' fill='white'%3E🛍️%3C/text%3E%3C/svg%3E"
+        playSound();
+        new Notification('✅ Ready!', {
+          body: 'Notifications will work when your phone is locked!',
+          requireInteraction: true
         });
       }, 500);
-      return true;
-    }
-    updatePushUI();
-    return false;
-  }
-  
-  function updatePushUI() {
-    const container = document.getElementById("pushStatusContainer");
-    const iosInstruction = document.getElementById("iosInstruction");
-    if (!container) return;
-    
-    if (Notification.permission === "granted") {
-      if (isIOSWebApp()) iosInstruction.style.display = "none";
-      container.innerHTML = `<div class="notify-banner"><span class="notify-text">🔔 Notifications active • Works on lock screen</span><button id="testNotifBtn" class="notify-badge enabled">🔔 Test</button></div>`;
-      const testBtn = document.getElementById("testNotifBtn");
-      if (testBtn) testBtn.onclick = () => {
-        playNotificationSound();
-        new Notification("🔔 Test", { body: "Notification works!", requireInteraction: true });
-      };
-    } 
-    else if (Notification.permission === "denied") {
-      container.innerHTML = `<div class="notify-banner"><span class="notify-text">❌ Notifications blocked. Go to Settings → Safari → Notifications → Allow</span></div>`;
-      iosInstruction.style.display = "none";
-    }
-    else {
-      if (!isIOSWebApp()) iosInstruction.style.display = "block";
-      container.innerHTML = `<div class="notify-banner"><span class="notify-text">🔔 Enable lock screen notifications</span><button id="requestBtn" class="notify-badge">Enable</button></div>`;
-      const reqBtn = document.getElementById("requestBtn");
-      if (reqBtn) reqBtn.onclick = () => requestNotificationPermission();
-    }
-  }
-  
-  // Network status monitoring
-  function updateNetworkStatus() {
-    isOnline = navigator.onLine;
-    const syncText = document.getElementById('syncText');
-    if (syncText) {
-      if (isOnline) {
-        syncText.innerHTML = 'Live sync active';
-      } else {
-        syncText.innerHTML = 'Offline - will sync when online';
+      
+      // Also try service worker notification
+      if (swRegistration && swRegistration.showNotification) {
+        swRegistration.showNotification('✅ Ready!', {
+          body: 'Lock screen notifications are now active',
+          requireInteraction: true
+        });
       }
+    } else if (permission === 'denied') {
+      updatePermissionUI();
+      alert('Please enable notifications in Settings: Settings → Safari → Notifications → Allow');
     }
   }
+  
+  // Play notification sound
+  function playSound() {
+    try {
+      const context = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      
+      oscillator.frequency.value = 880;
+      gain.gain.value = 0.2;
+      
+      oscillator.start();
+      gain.gain.exponentialRampToValueAtTime(0.00001, context.currentTime + 0.5);
+      oscillator.stop(context.currentTime + 0.5);
+      
+      if (context.state === 'suspended') {
+        context.resume();
+      }
+    } catch(e) {
+      console.log('Sound error:', e);
+    }
+  }
+  
+  // Send test notification
+  function sendTestNotification() {
+    if (Notification.permission !== 'granted') {
+      alert('Please enable notifications first');
+      return;
+    }
+    
+    playSound();
+    
+    // Regular notification
+    new Notification('🔔 Test Notification', {
+      body: `This notification works! Time: ${new Date().toLocaleTimeString()}`,
+      icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%2334c759'/%3E%3Ctext x='50' y='67' font-size='50' text-anchor='middle' fill='white'%3E🔔%3C/text%3E%3C/svg%3E",
+      requireInteraction: true
+    });
+    
+    // Also try service worker notification
+    if (swRegistration && swRegistration.showNotification) {
+      swRegistration.showNotification('🔔 Test from Service Worker', {
+        body: 'This works even if app is closed!',
+        requireInteraction: true
+      });
+    }
+    
+    // Update timestamp
+    document.getElementById('timestamp').innerHTML = `Last test: ${new Date().toLocaleTimeString()}`;
+  }
+  
+  // Schedule a reminder
+  function scheduleTestReminder() {
+    const text = document.getElementById('reminderText').value.trim();
+    const localDateTime = document.getElementById('reminderTime').value;
+    
+    if (!text) {
+      alert('Please enter reminder text');
+      return;
+    }
+    
+    if (!localDateTime) {
+      alert('Please select a time');
+      return;
+    }
+    
+    // Convert local datetime to timestamp
+    const [date, time] = localDateTime.split('T');
+    const [year, month, day] = date.split('-');
+    const [hour, minute] = time.split(':');
+    const reminderDate = new Date(year, month - 1, day, hour, minute);
+    const reminderTimeMs = reminderDate.getTime();
+    const now = Date.now();
+    const delay = reminderTimeMs - now;
+    
+    if (delay < 0) {
+      alert('Please select a future time');
+      return;
+    }
+    
+    if (delay > 30 * 24 * 60 * 60 * 1000) {
+      alert('Cannot schedule more than 30 days in advance');
+      return;
+    }
+    
+    // Clear existing timer for this reminder
+    if (window.currentTimer) {
+      clearTimeout(window.currentTimer);
+    }
+    
+    // Schedule notification
+    window.currentTimer = setTimeout(() => {
+      if (Notification.permission === 'granted') {
+        playSound();
+        new Notification('⏰ Reminder', {
+          body: text,
+          requireInteraction: true
+        });
+        
+        if (swRegistration && swRegistration.showNotification) {
+          swRegistration.showNotification('⏰ Reminder', {
+            body: text,
+            requireInteraction: true
+          });
+        }
+        
+        document.getElementById('scheduledInfo').innerHTML = `✅ Reminder sent at ${new Date().toLocaleTimeString()}`;
+      }
+    }, delay);
+    
+    const scheduledTime = reminderDate.toLocaleTimeString();
+    document.getElementById('scheduledInfo').innerHTML = `⏰ Reminder scheduled for ${scheduledTime} (${Math.round(delay/1000)} seconds from now)`;
+    
+    // Store in localStorage
+    const reminders = JSON.parse(localStorage.getItem('reminders') || '[]');
+    reminders.push({ text, time: reminderTimeMs, timestamp: Date.now() });
+    localStorage.setItem('reminders', JSON.stringify(reminders));
+  }
+  
+  // Restore reminders on page load
+  function restoreReminders() {
+    const reminders = JSON.parse(localStorage.getItem('reminders') || '[]');
+    const now = Date.now();
+    
+    reminders.forEach(reminder => {
+      if (reminder.time > now && reminder.time - now < 30 * 24 * 60 * 60 * 1000) {
+        const delay = reminder.time - now;
+        setTimeout(() => {
+          if (Notification.permission === 'granted') {
+            playSound();
+            new Notification('⏰ Reminder', {
+              body: reminder.text,
+              requireInteraction: true
+            });
+          }
+        }, delay);
+      }
+    });
+  }
+  
+  // Update timestamp every second
+  setInterval(() => {
+    const timestamp = document.getElementById('timestamp');
+    if (timestamp) {
+      timestamp.innerHTML = `Current time: ${new Date().toLocaleTimeString()}`;
+    }
+  }, 1000);
   
   // Initialize
   async function init() {
-    // Update webapp badge
-    if (isIOSWebApp()) {
-      document.getElementById('webappBadge').innerHTML = '✅ Web App Mode Active';
-    }
+    updateWebAppStatus();
+    updatePermissionUI();
     
-    // Load data
-    await loadAndSync();
-    restoreReminders();
-    
-    // Setup notifications
-    if ('Notification' in window) {
-      updatePushUI();
-      if (Notification.permission === 'granted') {
-        await registerServiceWorker();
+    // Check if already have permission
+    if (Notification.permission === 'granted') {
+      swRegistration = await registerServiceWorker();
+      if (swRegistration) {
+        await subscribeToPush(swRegistration);
       }
+      restoreReminders();
     }
     
-    // Network monitoring
-    window.addEventListener('online', updateNetworkStatus);
-    window.addEventListener('offline', updateNetworkStatus);
-    updateNetworkStatus();
-    
-    // Show iOS instructions if needed
-    if (!isIOSWebApp() && Notification.permission !== 'granted') {
-      document.getElementById('iosInstruction').style.display = 'block';
-    }
+    // Log for debugging
+    console.log('App initialized');
+    console.log('Running as web app:', isRunningAsWebApp());
+    console.log('Notification permission:', Notification.permission);
+    console.log('Service worker support:', 'serviceWorker' in navigator);
   }
   
-  // Handle enter key
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && (document.activeElement?.id === "name" || 
-        document.activeElement?.id === "image" || 
-        document.activeElement?.id === "date")) {
-      addItem();
-    }
-  });
-  
-  // Start app
   init();
 </script>
 </body>
