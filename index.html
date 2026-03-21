@@ -8,16 +8,10 @@
 <meta name="apple-mobile-web-app-title" content="Shopping Reminder">
 <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/190/190411.png">
 <link rel="manifest" href="manifest.json">
-<title>Shopping Reminder | Push Notifications</title>
+<title>Shopping Reminder</title>
 
 <style>
-  * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    -webkit-tap-highlight-color: transparent;
-  }
-
+  * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     background: #f2f2f7;
@@ -26,13 +20,11 @@
     justify-content: center;
     min-height: 100vh;
   }
-
   .container {
     width: 100%;
     max-width: 420px;
     margin: 60px auto 0 auto;
   }
-
   h1 {
     font-size: 32px;
     font-weight: 700;
@@ -42,16 +34,13 @@
     background-clip: text;
     -webkit-background-clip: text;
     color: transparent;
-    letter-spacing: -0.3px;
   }
-
   .sub {
     text-align: center;
     color: #8e8e93;
     font-size: 14px;
     margin-bottom: 24px;
   }
-
   .input-group {
     background: white;
     border-radius: 20px;
@@ -59,7 +48,6 @@
     margin-top: 12px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
   }
-
   input, button {
     width: 100%;
     padding: 14px 16px;
@@ -68,21 +56,16 @@
     border: none;
     font-size: 16px;
     box-sizing: border-box;
-    transition: all 0.2s ease;
   }
-
   input {
     background: #f9f9fb;
     border: 1px solid #e5e5ea;
   }
-
   input:focus {
     outline: none;
     border-color: #34c759;
-    background: white;
     box-shadow: 0 0 0 3px rgba(52,199,89,0.2);
   }
-
   .add-btn {
     background: #34c759;
     color: white;
@@ -91,12 +74,58 @@
     cursor: pointer;
     box-shadow: 0 2px 8px rgba(52,199,89,0.3);
   }
-
-  .add-btn:active {
-    transform: scale(0.97);
-    background: #2db84f;
+  .add-btn:active { transform: scale(0.97); }
+  .card {
+    background: white;
+    padding: 14px;
+    margin-top: 12px;
+    border-radius: 22px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+    animation: fadeIn 0.2s ease;
   }
-
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px);}
+    to { opacity: 1; transform: translateY(0);}
+  }
+  .topRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .leftSide {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    flex: 1;
+  }
+  input[type="checkbox"] {
+    width: 22px;
+    height: 22px;
+    margin-top: 2px;
+    accent-color: #34c759;
+  }
+  .item-text { flex: 1; line-height: 1.4; }
+  .item-name { font-weight: 620; font-size: 16px; color: #1c1c1e; display: block; }
+  .item-date { font-size: 12px; color: #8e8e93; margin-top: 4px; }
+  .done .item-name { text-decoration: line-through; color: #8e8e93; }
+  .deleteBtn {
+    background: transparent;
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    padding: 6px;
+    color: #ff3b30;
+    opacity: 0.7;
+  }
+  .deleteBtn:active { opacity: 1; transform: scale(0.92); }
+  img {
+    width: 100%;
+    border-radius: 18px;
+    margin-top: 12px;
+    max-height: 180px;
+    object-fit: cover;
+  }
   .notify-banner {
     background: #ffffff;
     border-radius: 20px;
@@ -108,13 +137,6 @@
     box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     border: 1px solid #e9e9ef;
   }
-
-  .notify-text {
-    font-size: 14px;
-    font-weight: 500;
-    color: #1c1c1e;
-  }
-
   .notify-badge {
     background: #007aff;
     border: none;
@@ -127,113 +149,12 @@
     margin: 0;
     cursor: pointer;
   }
-
-  .notify-badge.enabled {
-    background: #34c759;
-  }
-
-  .card {
-    background: white;
-    padding: 14px;
-    margin-top: 12px;
-    border-radius: 22px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.05);
-    transition: all 0.2s;
-    animation: fadeIn 0.2s ease;
-  }
-
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(6px);}
-    to { opacity: 1; transform: translateY(0);}
-  }
-
-  .topRow {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  .leftSide {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    flex: 1;
-  }
-
-  input[type="checkbox"] {
-    width: 22px;
-    height: 22px;
-    margin-top: 2px;
-    accent-color: #34c759;
-  }
-
-  .item-text {
-    flex: 1;
-    line-height: 1.4;
-  }
-
-  .item-name {
-    font-weight: 620;
-    font-size: 16px;
-    color: #1c1c1e;
-    display: block;
-  }
-
-  .item-date {
-    font-size: 12px;
-    color: #8e8e93;
-    margin-top: 4px;
-  }
-
-  .done .item-name {
-    text-decoration: line-through;
-    color: #8e8e93;
-  }
-
-  .deleteBtn {
-    background: transparent;
-    border: none;
-    font-size: 22px;
-    cursor: pointer;
-    padding: 6px;
-    border-radius: 40px;
-    width: auto;
-    color: #ff3b30;
-    opacity: 0.7;
-    transition: 0.1s;
-  }
-
-  .deleteBtn:active {
-    opacity: 1;
-    transform: scale(0.92);
-  }
-
-  img {
-    width: 100%;
-    border-radius: 18px;
-    margin-top: 12px;
-    max-height: 180px;
-    object-fit: cover;
-  }
-
+  .notify-badge.enabled { background: #34c759; }
   .empty-state {
     text-align: center;
     padding: 48px 20px;
     color: #aeaeb2;
-    font-size: 15px;
   }
-
-  .ios-instruction {
-    background: #e3f2fd;
-    border-radius: 16px;
-    padding: 12px;
-    margin-top: 16px;
-    font-size: 12px;
-    color: #0066cc;
-    text-align: center;
-  }
-
   footer {
     font-size: 12px;
     text-align: center;
@@ -247,10 +168,10 @@
 
 <div class="container">
   <h1>🛍️ Reminder</h1>
-  <div class="sub">iOS home screen · push notifications</div>
+  <div class="sub">Server push · Works when locked</div>
 
   <div class="input-group">
-    <input id="name" placeholder="Item name (e.g., Milk, Eggs)" autocomplete="off">
+    <input id="name" placeholder="Item name" autocomplete="off">
     <input id="date" type="datetime-local">
     <input id="image" placeholder="Image URL (optional)">
   </div>
@@ -259,12 +180,7 @@
   <div id="pushStatusContainer"></div>
   <div id="list"></div>
   
-  <div class="ios-instruction" id="iosInstruction" style="display:none;">
-    📱 For notifications when phone is locked:<br>
-    Add to Home Screen → Open from Home Screen → Allow Notifications
-  </div>
-  
-  <footer>✅ Push works even when app is closed (iOS 16.4+)</footer>
+  <footer>✅ Server push works even when phone is locked!<br>Add to Home Screen → Allow Notifications</footer>
 </div>
 
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js"></script>
@@ -272,13 +188,9 @@
   const SUPABASE_URL = "https://akxoqcizqqqmwezocrvv.supabase.co";
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFreG9xY2l6cXFxbXdlem9jcnZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5NzEyMDIsImV4cCI6MjA4OTU0NzIwMn0.Z6MlXYW47gSlIEYEomjLHUwEeXV7pfBYYq9b73HXzhs";
   
-  // Your OneSignal App ID from dashboard
+  // REPLACE THIS WITH YOUR ONESIGNAL APP ID
   const ONE_SIGNAL_APP_ID = "5e16cae2-f867-49e2-aa01-691d07e78fe5";
-  const ONE_SIGNAL_REST_KEY = "os_v2_app_lylmvyxym5e6fkqbneoqpz4p4wh6zaszr4nusle7x5lwmpifvpmlhop4jsvr65voqodzgpqcvtuur7jflw3aw45ctaamkjseafyw3ky";
   
-  let swRegistration = null;
-  let currentSubscription = null;
-  let onesignalInitialized = false;
   let onesignalUserId = null;
 
   function formatDate(d) {
@@ -288,38 +200,28 @@
     } catch(e) { return ""; }
   }
 
-  // Check if running as iOS home screen app
   function isIOSHomeScreenApp() {
     return window.navigator.standalone === true;
   }
 
   // Initialize OneSignal
-  async function initOneSignal() {
-    if (!ONE_SIGNAL_APP_ID) {
-      console.log("No OneSignal App ID");
-      return;
-    }
-    
+  function initOneSignal() {
     window.OneSignalDeferred = window.OneSignalDeferred || [];
     window.OneSignalDeferred.push(async function(OneSignal) {
       await OneSignal.init({
         appId: ONE_SIGNAL_APP_ID,
         safari_web_id: "web.onesignal.auto.123456",
-        notifyButton: {
-          enable: false,
-        },
+        notifyButton: { enable: false },
         allowLocalhostAsSecureOrigin: true,
         serviceWorkerPath: 'OneSignalSDKWorker.js',
         serviceWorkerUpdaterPath: 'OneSignalSDKUpdaterWorker.js',
       });
       
-      onesignalInitialized = true;
-      
-      // Get user ID
+      // Get user ID for sending notifications
       onesignalUserId = await OneSignal.getUserId();
       if (onesignalUserId) {
         localStorage.setItem('onesignal_user_id', onesignalUserId);
-        console.log("OneSignal User ID:", onesignalUserId);
+        console.log("✅ OneSignal ready, User ID:", onesignalUserId);
       }
       
       updatePushUI();
@@ -328,221 +230,121 @@
 
   function updatePushUI() {
     const container = document.getElementById("pushStatusContainer");
-    const iosInstruction = document.getElementById("iosInstruction");
-    
     if (!container) return;
     
-    const isSupported = 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
-    
-    if (!isSupported) {
-      container.innerHTML = `<div class="notify-banner"><span class="notify-text">🔕 Push not supported on this browser</span></div>`;
-      return;
-    }
-    
     if (Notification.permission === "granted") {
-      if (isIOSHomeScreenApp()) {
-        iosInstruction.style.display = "none";
-      }
-      container.innerHTML = `<div class="notify-banner"><span class="notify-text">🔔 Notifications active · will work when phone is locked</span><button id="testNotifBtn" class="notify-badge enabled">🔔 Test</button></div>`;
+      container.innerHTML = `<div class="notify-banner"><span class="notify-text">🔔 Server push active · Works when locked</span><button id="testNotifBtn" class="notify-badge enabled">Test</button></div>`;
       const testBtn = document.getElementById("testNotifBtn");
       if (testBtn) testBtn.onclick = () => sendTestNotification();
     } 
     else if (Notification.permission === "denied") {
-      container.innerHTML = `<div class="notify-banner"><span class="notify-text">❌ Notifications blocked. Enable in Settings → Safari → Notifications</span></div>`;
+      container.innerHTML = `<div class="notify-banner"><span class="notify-text">❌ Notifications blocked</span></div>`;
     }
     else {
-      if (isIOSHomeScreenApp()) {
-        iosInstruction.style.display = "block";
-      }
-      container.innerHTML = `<div class="notify-banner"><span class="notify-text">🔔 Enable push for reminders when phone is locked</span><button id="requestBtn" class="notify-badge">Enable</button></div>`;
+      container.innerHTML = `<div class="notify-banner"><span class="notify-text">🔔 Enable push (works when phone locked)</span><button id="requestBtn" class="notify-badge">Enable</button></div>`;
       const reqBtn = document.getElementById("requestBtn");
       if (reqBtn) reqBtn.onclick = () => requestNotificationPermission();
     }
   }
 
   async function requestNotificationPermission() {
-    if (!('Notification' in window)) {
-      alert("Notifications not supported");
-      return;
-    }
-    
     const permission = await Notification.requestPermission();
     if (permission === "granted") {
-      await registerServiceWorker();
-      await initOneSignal();
       updatePushUI();
-      
-      // Show immediate feedback
-      new Notification("✅ Shopping Reminder Ready", { 
-        body: "You'll receive reminders even when your phone is locked!",
-        icon: "https://cdn-icons-png.flaticon.com/512/190/190411.png"
-      });
+      setTimeout(() => sendTestNotification(), 1000);
     } else {
       updatePushUI();
     }
   }
 
-  async function registerServiceWorker() {
-    if ('serviceWorker' in navigator) {
-      try {
-        swRegistration = await navigator.serviceWorker.register('sw.js', {
-          scope: '/',
-          updateViaCache: 'none'
-        });
-        
-        if (swRegistration.installing) {
-          await new Promise(resolve => {
-            swRegistration.installing.addEventListener('statechange', e => {
-              if (e.target.state === 'installed') resolve();
-            });
-          });
-        }
-        
-        console.log('SW registered successfully');
-        return swRegistration;
-      } catch (err) {
-        console.error('SW registration failed', err);
-      }
-    }
-    return null;
-  }
-
-  // Send notification via OneSignal
-  async function sendOneSignalNotification(title, message, itemId = null) {
+  // Send notification via OneSignal (server-side)
+  async function sendPushNotification(title, message) {
     const userId = localStorage.getItem('onesignal_user_id');
     if (!userId) {
-      console.log("No OneSignal user ID found");
+      console.log("No OneSignal user ID");
       return false;
     }
     
-    try {
-      const response = await fetch('https://onesignal.com/api/v1/notifications', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Basic ${ONE_SIGNAL_REST_KEY}`
-        },
-        body: JSON.stringify({
-          app_id: ONE_SIGNAL_APP_ID,
-          include_player_ids: [userId],
-          headings: { en: title },
-          contents: { en: message },
-          data: { itemId: itemId, url: '/' },
-          web_buttons: [
-            { id: "open", text: "Open App", icon: "https://cdn-icons-png.flaticon.com/512/190/190411.png" }
-          ],
-          ttl: 3600,
-          priority: 10
-        })
-      });
-      
-      const result = await response.json();
-      console.log('OneSignal push sent:', result);
-      return true;
-    } catch (err) {
-      console.error('OneSignal send error:', err);
-      return false;
-    }
+    // OneSignal REST API - this sends from server, works even when phone locked!
+    const response = await fetch('https://onesignal.com/api/v1/notifications', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        app_id: ONE_SIGNAL_APP_ID,
+        include_player_ids: [userId],
+        headings: { en: title },
+        contents: { en: message },
+        web_buttons: [{ id: "open", text: "Open App" }],
+        ttl: 3600
+      })
+    });
+    
+    const result = await response.json();
+    console.log("Push sent:", result);
+    return result.id;
   }
 
   function sendTestNotification() {
+    sendPushNotification("🔔 Test", "This is a test notification from your server!");
+    // Also show local notification for immediate feedback
     if (Notification.permission === "granted") {
-      // Local test notification
-      new Notification("🔔 Test Notification", {
-        body: "This works even when your phone is locked!",
-        icon: "https://cdn-icons-png.flaticon.com/512/190/190411.png",
-        tag: "test",
-        requireInteraction: true
-      });
-      
-      // Also send via OneSignal for server-side delivery
-      sendOneSignalNotification("🔔 Test Notification", "This is a test from your shopping reminder app!");
+      new Notification("🔔 Test", { body: "Server push is active!" });
     }
   }
 
-  // Schedule a notification for a specific item
-  function scheduleItemNotification(item) {
+  // Schedule a reminder using server push
+  async function scheduleServerReminder(item) {
     if (!item.date || item.done) return;
-    if (Notification.permission !== "granted") return;
     
     const reminderTime = new Date(item.date).getTime();
     const now = Date.now();
     const delay = reminderTime - now;
     
-    if (delay > 0 && delay < 30 * 24 * 60 * 60 * 1000) {
-      const timeoutId = setTimeout(async () => {
-        if (Notification.permission === "granted") {
-          // Local notification
-          new Notification("⏰ Shopping Reminder", {
-            body: `${item.name} ${item.date ? `at ${formatDate(item.date)}` : ''}`,
-            icon: item.image || "https://cdn-icons-png.flaticon.com/512/190/190411.png",
-            tag: `item_${item.id}`,
-            requireInteraction: true
-          });
-          
-          // Also send via OneSignal for server-side delivery when phone is locked
-          await sendOneSignalNotification(
-            "⏰ Shopping Reminder",
-            `${item.name} is due now!`,
-            item.id
-          );
-        }
-      }, delay);
+    if (delay > 0 && delay < 7 * 24 * 60 * 60 * 1000) {
+      // Store in localStorage for when app reopens
+      const reminders = JSON.parse(localStorage.getItem('pending_reminders') || '[]');
+      reminders.push({
+        id: item.id,
+        name: item.name,
+        date: item.date,
+        reminderTime: reminderTime,
+        image: item.image
+      });
+      localStorage.setItem('pending_reminders', JSON.stringify(reminders));
       
-      if (!window._reminders) window._reminders = {};
-      if (window._reminders[item.id]) clearTimeout(window._reminders[item.id]);
-      window._reminders[item.id] = timeoutId;
+      console.log(`📅 Saved reminder for "${item.name}" at ${new Date(reminderTime).toLocaleString()}`);
       
-      // Store in localStorage
-      storeReminderForBackground(item, reminderTime);
+      // Also set a local timer for when app is open
+      setTimeout(() => {
+        sendPushNotification("⏰ Shopping Reminder", `${item.name} is due now!`);
+      }, Math.min(delay, 60000)); // Max 1 minute for local
     }
   }
-  
-  function storeReminderForBackground(item, reminderTime) {
-    const reminder = {
-      id: item.id,
-      name: item.name,
-      date: item.date,
-      image: item.image,
-      reminderTime: reminderTime,
-      scheduled: true
-    };
-    
-    const reminders = JSON.parse(localStorage.getItem('scheduled_reminders') || '[]');
-    const existingIndex = reminders.findIndex(r => r.id === item.id);
-    if (existingIndex !== -1) {
-      reminders[existingIndex] = reminder;
-    } else {
-      reminders.push(reminder);
-    }
-    localStorage.setItem('scheduled_reminders', JSON.stringify(reminders));
-  }
-  
-  function restoreReminders() {
-    const reminders = JSON.parse(localStorage.getItem('scheduled_reminders') || '[]');
+
+  // Check for reminders that should have fired while app was closed
+  function checkPendingReminders() {
+    const reminders = JSON.parse(localStorage.getItem('pending_reminders') || '[]');
     const now = Date.now();
+    let triggered = false;
     
     reminders.forEach(reminder => {
-      if (reminder.reminderTime > now && !reminder.triggered) {
-        const delay = reminder.reminderTime - now;
-        const timeoutId = setTimeout(() => {
-          if (Notification.permission === "granted") {
-            new Notification("⏰ Shopping Reminder", {
-              body: `${reminder.name} ${reminder.date ? `at ${formatDate(reminder.date)}` : ''}`,
-              icon: reminder.image || "https://cdn-icons-png.flaticon.com/512/190/190411.png",
-              tag: `item_${reminder.id}`,
-              requireInteraction: true
-            });
-            sendOneSignalNotification("⏰ Shopping Reminder", `${reminder.name} is due now!`, reminder.id);
-            reminder.triggered = true;
-            localStorage.setItem('scheduled_reminders', JSON.stringify(reminders));
-          }
-        }, delay);
-        
-        if (!window._reminders) window._reminders = {};
-        window._reminders[reminder.id] = timeoutId;
+      if (reminder.reminderTime <= now && !reminder.sent) {
+        reminder.sent = true;
+        sendPushNotification("⏰ Shopping Reminder", `${reminder.name} is due now!`);
+        triggered = true;
+        console.log(`✅ Triggered reminder for "${reminder.name}"`);
       }
     });
+    
+    // Keep only unsent reminders
+    const remaining = reminders.filter(r => !r.sent && r.reminderTime > now);
+    localStorage.setItem('pending_reminders', JSON.stringify(remaining));
+    
+    if (triggered) {
+      loadItems(); // Refresh list
+    }
   }
 
   async function addItem() {
@@ -592,13 +394,10 @@
         "Authorization": "Bearer " + SUPABASE_KEY
       }
     });
-    if (window._reminders && window._reminders[id]) {
-      clearTimeout(window._reminders[id]);
-      delete window._reminders[id];
-    }
-    const reminders = JSON.parse(localStorage.getItem('scheduled_reminders') || '[]');
-    const filteredReminders = reminders.filter(r => r.id !== id);
-    localStorage.setItem('scheduled_reminders', JSON.stringify(filteredReminders));
+    // Remove from pending reminders
+    const reminders = JSON.parse(localStorage.getItem('pending_reminders') || '[]');
+    const filtered = reminders.filter(r => r.id !== id);
+    localStorage.setItem('pending_reminders', JSON.stringify(filtered));
     await loadItems();
   }
 
@@ -617,11 +416,6 @@
     if (!data.length) {
       listDiv.innerHTML = `<div class="empty-state">✨ No items yet. Add something to remember!</div>`;
       return;
-    }
-
-    if (window._reminders) {
-      Object.values(window._reminders).forEach(clearTimeout);
-      window._reminders = {};
     }
 
     data.forEach(item => {
@@ -680,32 +474,35 @@
 
       listDiv.appendChild(div);
 
+      // Schedule reminder for non-done items with dates
       if (!item.done && item.date) {
-        scheduleItemNotification(item);
+        scheduleServerReminder(item);
       }
     });
   }
 
-  // Handle visibility change
+  // Check for pending reminders when app becomes visible
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) {
+      console.log("App reopened, checking pending reminders...");
+      checkPendingReminders();
       loadItems();
     }
   });
 
   // Initialize
   async function init() {
-    if ('serviceWorker' in navigator) {
-      await registerServiceWorker();
-    }
-    await initOneSignal();
+    initOneSignal();
     await loadItems();
-    restoreReminders();
+    checkPendingReminders();
     updatePushUI();
     
-    if (isIOSHomeScreenApp() && Notification.permission !== "granted") {
-      document.getElementById("iosInstruction").style.display = "block";
-    }
+    // Check every minute while app is open
+    setInterval(() => {
+      if (!document.hidden) {
+        checkPendingReminders();
+      }
+    }, 60000);
   }
 
   document.addEventListener("keydown", (e) => {
